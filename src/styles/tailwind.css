@@ -1,0 +1,178 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-primary: #2563EB; /* Deep blue (primary) - blue-600 */
+    --color-primary-50: #EFF6FF; /* Very light blue - blue-50 */
+    --color-primary-100: #DBEAFE; /* Light blue - blue-100 */
+    --color-primary-500: #3B82F6; /* Medium blue - blue-500 */
+    --color-primary-600: #2563EB; /* Primary blue - blue-600 */
+    --color-primary-700: #1D4ED8; /* Darker blue - blue-700 */
+    --color-primary-900: #1E3A8A; /* Very dark blue - blue-900 */
+
+    /* Secondary Colors */
+    --color-secondary: #64748B; /* Sophisticated slate - slate-500 */
+    --color-secondary-100: #F1F5F9; /* Light slate - slate-100 */
+    --color-secondary-200: #E2E8F0; /* Light slate - slate-200 */
+    --color-secondary-300: #CBD5E1; /* Medium light slate - slate-300 */
+    --color-secondary-400: #94A3B8; /* Medium slate - slate-400 */
+    --color-secondary-500: #64748B; /* Secondary slate - slate-500 */
+    --color-secondary-600: #475569; /* Dark slate - slate-600 */
+    --color-secondary-700: #334155; /* Darker slate - slate-700 */
+    --color-secondary-800: #1E293B; /* Very dark slate - slate-800 */
+
+    /* Accent Colors */
+    --color-accent: #10B981; /* Success-oriented emerald - emerald-500 */
+    --color-accent-100: #D1FAE5; /* Light emerald - emerald-100 */
+    --color-accent-500: #10B981; /* Accent emerald - emerald-500 */
+    --color-accent-600: #059669; /* Darker emerald - emerald-600 */
+
+    /* Background Colors */
+    --color-background: #FAFBFC; /* Subtle off-white - custom */
+    --color-surface: #FFFFFF; /* Pure white - white */
+
+    /* Text Colors */
+    --color-text-primary: #1E293B; /* Near-black with blue undertone - slate-800 */
+    --color-text-secondary: #64748B; /* Medium gray - slate-500 */
+
+    /* Status Colors */
+    --color-success: #059669; /* Darker emerald - emerald-600 */
+    --color-success-100: #D1FAE5; /* Light emerald - emerald-100 */
+    --color-success-500: #10B981; /* Medium emerald - emerald-500 */
+
+    --color-warning: #D97706; /* Professional amber - amber-600 */
+    --color-warning-100: #FEF3C7; /* Light amber - amber-100 */
+    --color-warning-500: #F59E0B; /* Medium amber - amber-500 */
+
+    --color-error: #DC2626; /* Clear red - red-600 */
+    --color-error-100: #FEE2E2; /* Light red - red-100 */
+    --color-error-500: #EF4444; /* Medium red - red-500 */
+
+    /* Border Colors */
+    --color-border: #E2E8F0; /* Minimal border - slate-200 */
+    --color-border-focus: #2563EB; /* Focus border - blue-600 */
+
+    /* Shadow Colors */
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.15);
+    --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.2);
+    /* Background Colors */
+    --color-background: #FAFAFA; /* warm-gray-50 */
+    --color-foreground: #0F172A; /* slate-900 */
+    --color-surface: #FFFFFF; /* white */
+    --color-card: #FFFFFF; /* white */
+    --color-card-foreground: #0F172A; /* slate-900 */
+    --color-popover: #FFFFFF; /* white */
+    --color-popover-foreground: #0F172A; /* slate-900 */
+    
+    /* Neutral Colors */
+    --color-muted: #F1F5F9; /* slate-100 */
+    --color-muted-foreground: #475569; /* slate-600 */
+    --color-border: #E2E8F0; /* slate-200 */
+    --color-input: #FFFFFF; /* white */
+    --color-ring: #2563EB; /* blue-600 */
+    
+    /* Brand Colors */
+    --color-primary: #2563EB; /* blue-600 */
+    --color-primary-foreground: #FFFFFF; /* white */
+    --color-secondary: #64748B; /* slate-500 */
+    --color-secondary-foreground: #FFFFFF; /* white */
+    
+    /* Semantic Colors */
+    --color-accent: #10B981; /* emerald-500 */
+    --color-accent-foreground: #FFFFFF; /* white */
+    --color-success: #059669; /* emerald-600 */
+    --color-success-foreground: #FFFFFF; /* white */
+    --color-warning: #D97706; /* amber-600 */
+    --color-warning-foreground: #FFFFFF; /* white */
+    --color-error: #DC2626; /* red-600 */
+    --color-error-foreground: #FFFFFF; /* white */
+    --color-destructive: #DC2626; /* red-600 */
+    --color-destructive-foreground: #FFFFFF; /* white */
+    
+    /* Shadows */
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+    
+    /* Border Radius */
+    --radius: 0.5rem;
+  }
+  
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  }
+  
+  .font-mono {
+    font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  }
+   * {
+    @apply border-border;
+  }
+
+
+
+  
+
+  code, pre {
+    @apply font-mono;
+  }
+}
+
+@layer utilities {
+  .shadow-elevation-1 {
+    box-shadow: var(--shadow-sm);
+  }
+  
+  .shadow-elevation-2 {
+    box-shadow: var(--shadow-md);
+  }
+  
+  .shadow-elevation-3 {
+    box-shadow: var(--shadow-lg);
+  }
+  
+  .transition-smooth {
+    transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .transition-spatial {
+    transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+@layer components {
+  .btn-primary {
+    @apply bg-primary text-white hover:bg-primary-700 focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-all duration-150 ease-out;
+  }
+
+  .btn-secondary {
+    @apply bg-secondary-100 text-secondary-700 hover:bg-secondary-200 focus:ring-2 focus:ring-secondary-500 focus:ring-offset-2 transition-all duration-150 ease-out;
+  }
+
+  .input-field {
+    @apply border border-border focus:border-border-focus focus:ring-2 focus:ring-primary-500 focus:ring-offset-0 transition-all duration-150 ease-out;
+  }
+
+  .card {
+    @apply bg-surface border border-border rounded-lg shadow-sm;
+  }
+
+  .nav-item {
+    @apply text-text-secondary hover:text-text-primary transition-colors duration-150 ease-out;
+  }
+
+  .nav-item-active {
+    @apply text-primary border-b-2 border-primary;
+  }
+}
