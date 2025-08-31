@@ -3,7 +3,7 @@ import Icon from '../../../components/AppIcon';
 import Input from '../../../components/ui/Input';
 import Button from '../../../components/ui/Button';
 
-const SchemaExplorer = ({ entities = [], onEntitySelect, onEntityDrag, selectedEntityId, isCollapsed = false }) => {
+const SchemaExplorer = ({ entities = [], onEntitySelect, onEntityDrag, selectedEntityId, isCollapsed = false, onToggleCollapse }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedGroups, setExpandedGroups] = useState(new Set(['tables', 'views']));
   const [filterType, setFilterType] = useState('all');
@@ -128,6 +128,13 @@ const SchemaExplorer = ({ entities = [], onEntitySelect, onEntityDrag, selectedE
   if (isCollapsed) {
     return (
       <div className="w-12 bg-surface border-r border-border h-full flex flex-col items-center py-4 space-y-3">
+        <button
+          onClick={onToggleCollapse}
+          className="w-8 h-8 rounded flex items-center justify-center hover:bg-muted transition-smooth"
+          title="Expand Schema Explorer"
+        >
+          <Icon name="ChevronRight" size={16} className="text-muted-foreground" />
+        </button>
         <Icon name="Database" size={20} className="text-primary" />
         <div className="w-6 h-px bg-border" />
         {groupedEntities?.tables?.slice(0, 3)?.map((entity) => (
@@ -152,9 +159,18 @@ const SchemaExplorer = ({ entities = [], onEntitySelect, onEntityDrag, selectedE
     <div className="w-80 bg-surface border-r border-border h-full flex flex-col">
       {/* Header */}
       <div className="p-4 border-b border-border">
-        <div className="flex items-center space-x-3 mb-4">
-          <Icon name="Database" size={20} className="text-primary" />
-          <h2 className="text-lg font-semibold text-text-primary">Schema Explorer</h2>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-3">
+            <Icon name="Database" size={20} className="text-primary" />
+            <h2 className="text-lg font-semibold text-text-primary">Schema Explorer</h2>
+          </div>
+          <button
+            onClick={onToggleCollapse}
+            className="w-8 h-8 rounded flex items-center justify-center hover:bg-muted transition-smooth"
+            title="Collapse Schema Explorer"
+          >
+            <Icon name="ChevronLeft" size={16} className="text-muted-foreground" />
+          </button>
         </div>
 
         {/* Search */}

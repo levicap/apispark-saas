@@ -1,58 +1,8 @@
 import React, { useState } from 'react';
+import Icon from '../../../components/AppIcon';
+import Input from '../../../components/ui/Input';
 
-// Simple Icon component for now
-const Icon = ({ name, size = 16, className = '', color = 'currentColor' }) => (
-  <span className={`inline-block ${className}`} style={{ width: size, height: size, color }}>
-    {name === 'Globe' && '🌐'}
-    {name === 'Plus' && '➕'}
-    {name === 'Edit' && '✏️'}
-    {name === 'Edit2' && '✏️'}
-    {name === 'Edit3' && '✏️'}
-    {name === 'Trash2' && '🗑️'}
-    {name === 'Download' && '⬇️'}
-    {name === 'Network' && '🌐'}
-    {name === 'Search' && '🔍'}
-    {name === 'Radio' && '📻'}
-    {name === 'Code' && '💻'}
-    {name === 'FileText' && '📄'}
-    {name === 'Server' && '🖥️'}
-    {name === 'Gateway' && '🚪'}
-    {name === 'Scale' && '⚖️'}
-    {name === 'Shield' && '🛡️'}
-    {name === 'Brain' && '🧠'}
-    {name === 'Zap' && '⚡'}
-    {name === 'Bot' && '🤖'}
-    {name === 'Database' && '🗄️'}
-    {name === 'Hash' && '#'}
-    {name === 'Settings' && '⚙️'}
-    {name === 'Briefcase' && '💼'}
-    {name === 'GitBranch' && '🌿'}
-    {name === 'CheckSquare' && '☑️'}
-    {name === 'Clock' && '🕐'}
-    {name === 'MessageSquare' && '💬'}
-    {name === 'Activity' && '📊'}
-    {name === 'Key' && '🔑'}
-    {name === 'Lock' && '🔒'}
-    {name === 'Users' && '👥'}
-    {name === 'Layers' && '📚'}
-    {name === 'Timer' && '⏱️'}
-    {name === 'CheckCircle' && '✅'}
-    {name === 'Globe2' && '🌍'}
-    {name === 'Minimize' && '➖'}
-    {name === 'Send' && '📤'}
-    {name === 'Braces' && '{}'}
-    {name === 'FileCode' && '📝'}
-    {name === 'FileSpreadsheet' && '📊'}
-    {name === 'Webhook' && '🔗'}
-    {name === 'ExternalLink' && '🔗'}
-    {name === 'Mail' && '📧'}
-    {name === 'MessageCircle' && '💬'}
-    {name === 'CreditCard' && '💳'}
-    {name === 'GripVertical' && '⋮'}
-  </span>
-);
-
-const ComponentLibrary = ({ onDragStart, onAddNode, isCollapsed = false }) => {
+const ComponentLibrary = ({ onDragStart, isCollapsed = false }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('http');
 
@@ -102,40 +52,40 @@ const ComponentLibrary = ({ onDragStart, onAddNode, isCollapsed = false }) => {
     {
       id: 'graphql',
       name: 'GraphQL',
-      icon: 'Network',
+      icon: 'Braces',
       components: [
         {
           id: 'query',
           name: 'Query',
-          description: 'GraphQL query resolver',
+          description: 'GraphQL query operation',
           color: 'bg-purple-500',
           icon: 'Search'
         },
         {
           id: 'mutation',
           name: 'Mutation',
-          description: 'GraphQL mutation resolver',
+          description: 'GraphQL mutation operation',
           color: 'bg-pink-500',
           icon: 'Edit3'
         },
         {
           id: 'subscription',
           name: 'Subscription',
-          description: 'GraphQL subscription resolver',
+          description: 'GraphQL subscription operation',
           color: 'bg-indigo-500',
           icon: 'Radio'
         },
         {
           id: 'resolver',
-          name: 'Custom Resolver',
-          description: 'Custom GraphQL resolver logic',
+          name: 'Resolver',
+          description: 'GraphQL field resolver',
           color: 'bg-cyan-500',
-          icon: 'Code'
+          icon: 'Function'
         },
         {
           id: 'schema',
-          name: 'Schema Definition',
-          description: 'GraphQL schema type definitions',
+          name: 'Schema',
+          description: 'GraphQL schema definition',
           color: 'bg-teal-500',
           icon: 'FileText'
         }
@@ -149,135 +99,72 @@ const ComponentLibrary = ({ onDragStart, onAddNode, isCollapsed = false }) => {
         {
           id: 'service',
           name: 'Service',
-          description: 'Microservice endpoint',
+          description: 'Microservice instance',
           color: 'bg-blue-600',
           icon: 'Server'
         },
         {
           id: 'gateway',
           name: 'API Gateway',
-          description: 'Service routing and aggregation',
+          description: 'Service gateway/router',
           color: 'bg-green-600',
           icon: 'Gateway'
         },
         {
           id: 'loadbalancer',
           name: 'Load Balancer',
-          description: 'Distribute traffic across services',
+          description: 'Traffic distribution',
           color: 'bg-orange-600',
           icon: 'Scale'
+        },
+        {
+          id: 'messagequeue',
+          name: 'Message Queue',
+          description: 'Async communication',
+          color: 'bg-red-600',
+          icon: 'MessageSquare'
         },
         {
           id: 'circuitbreaker',
           name: 'Circuit Breaker',
           description: 'Fault tolerance pattern',
-          color: 'bg-red-600',
+          color: 'bg-yellow-600',
           icon: 'Shield'
-        },
-        {
-          id: 'servicemesh',
-          name: 'Service Mesh',
-          description: 'Service-to-service communication',
-          color: 'bg-purple-600',
-          icon: 'Network'
         }
       ]
     },
     {
-      id: 'llm',
-      name: 'AI/LLM Integration',
-      icon: 'Brain',
+      id: 'database',
+      name: 'Database',
+      icon: 'Database',
       components: [
         {
-          id: 'openai',
-          name: 'OpenAI',
-          description: 'OpenAI API integration',
-          color: 'bg-emerald-500',
+          id: 'table',
+          name: 'Database Table',
+          description: 'Database table schema',
+          color: 'bg-gray-600',
+          icon: 'Table'
+        },
+        {
+          id: 'view',
+          name: 'Database View',
+          description: 'Database view definition',
+          color: 'bg-slate-600',
+          icon: 'Eye'
+        },
+        {
+          id: 'storedprocedure',
+          name: 'Stored Procedure',
+          description: 'Database stored procedure',
+          color: 'bg-zinc-600',
+          icon: 'Code'
+        },
+        {
+          id: 'trigger',
+          name: 'Database Trigger',
+          description: 'Database trigger',
+          color: 'bg-neutral-600',
           icon: 'Zap'
-        },
-        {
-          id: 'anthropic',
-          name: 'Anthropic',
-          description: 'Claude API integration',
-          color: 'bg-blue-500',
-          icon: 'Bot'
-        },
-        {
-          id: 'vectorstore',
-          name: 'Vector Store',
-          description: 'Vector database integration',
-          color: 'bg-purple-500',
-          icon: 'Database'
-        },
-        {
-          id: 'embedding',
-          name: 'Embedding',
-          description: 'Text embedding service',
-          color: 'bg-indigo-500',
-          icon: 'Hash'
-        },
-        {
-          id: 'rag',
-          name: 'RAG Pipeline',
-          description: 'Retrieval Augmented Generation',
-          color: 'bg-pink-500',
-          icon: 'Search'
-        },
-        {
-          id: 'finetune',
-          name: 'Fine-tuning',
-          description: 'Model fine-tuning service',
-          color: 'bg-orange-500',
-          icon: 'Settings'
-        }
-      ]
-    },
-    {
-      id: 'business',
-      name: 'Business Logic',
-      icon: 'Briefcase',
-      components: [
-        {
-          id: 'workflow',
-          name: 'Workflow Engine',
-          description: 'Business process automation',
-          color: 'bg-blue-500',
-          icon: 'GitBranch'
-        },
-        {
-          id: 'rules',
-          name: 'Rules Engine',
-          description: 'Business rules processing',
-          color: 'bg-green-500',
-          icon: 'CheckSquare'
-        },
-        {
-          id: 'scheduler',
-          name: 'Scheduler',
-          description: 'Task scheduling and cron jobs',
-          color: 'bg-purple-500',
-          icon: 'Clock'
-        },
-        {
-          id: 'queue',
-          name: 'Message Queue',
-          description: 'Asynchronous message processing',
-          color: 'bg-orange-500',
-          icon: 'MessageSquare'
-        },
-        {
-          id: 'eventbus',
-          name: 'Event Bus',
-          description: 'Event-driven architecture',
-          color: 'bg-indigo-500',
-          icon: 'Radio'
-        },
-        {
-          id: 'state',
-          name: 'State Machine',
-          description: 'State management and transitions',
-          color: 'bg-teal-500',
-          icon: 'Activity'
         }
       ]
     },
@@ -306,20 +193,6 @@ const ComponentLibrary = ({ onDragStart, onAddNode, isCollapsed = false }) => {
           description: 'API key validation',
           color: 'bg-pink-500',
           icon: 'Hash'
-        },
-        {
-          id: 'saml',
-          name: 'SAML',
-          description: 'SAML 2.0 authentication',
-          color: 'bg-blue-500',
-          icon: 'Shield'
-        },
-        {
-          id: 'ldap',
-          name: 'LDAP',
-          description: 'LDAP directory integration',
-          color: 'bg-green-500',
-          icon: 'Users'
         }
       ]
     },
@@ -362,20 +235,6 @@ const ComponentLibrary = ({ onDragStart, onAddNode, isCollapsed = false }) => {
           description: 'Response caching layer',
           color: 'bg-amber-500',
           icon: 'Database'
-        },
-        {
-          id: 'compression',
-          name: 'Compression',
-          description: 'Response compression',
-          color: 'bg-blue-500',
-          icon: 'Minimize'
-        },
-        {
-          id: 'encryption',
-          name: 'Encryption',
-          description: 'Data encryption/decryption',
-          color: 'bg-red-500',
-          icon: 'Lock'
         }
       ]
     },
@@ -404,20 +263,6 @@ const ComponentLibrary = ({ onDragStart, onAddNode, isCollapsed = false }) => {
           description: 'Real-time data streaming',
           color: 'bg-purple-600',
           icon: 'Radio'
-        },
-        {
-          id: 'xml',
-          name: 'XML Response',
-          description: 'XML formatted response',
-          color: 'bg-orange-600',
-          icon: 'FileCode'
-        },
-        {
-          id: 'csv',
-          name: 'CSV Export',
-          description: 'CSV data export',
-          color: 'bg-teal-600',
-          icon: 'FileSpreadsheet'
         }
       ]
     },
@@ -439,34 +284,6 @@ const ComponentLibrary = ({ onDragStart, onAddNode, isCollapsed = false }) => {
           description: 'Third-party API connector',
           color: 'bg-red-600',
           icon: 'ExternalLink'
-        },
-        {
-          id: 'database',
-          name: 'Database',
-          description: 'Database connection and queries',
-          color: 'bg-blue-600',
-          icon: 'Database'
-        },
-        {
-          id: 'email',
-          name: 'Email Service',
-          description: 'Email sending service',
-          color: 'bg-green-600',
-          icon: 'Mail'
-        },
-        {
-          id: 'sms',
-          name: 'SMS Service',
-          description: 'SMS messaging service',
-          color: 'bg-purple-600',
-          icon: 'MessageCircle'
-        },
-        {
-          id: 'payment',
-          name: 'Payment Gateway',
-          description: 'Payment processing integration',
-          color: 'bg-emerald-600',
-          icon: 'CreditCard'
         }
       ]
     }
@@ -484,12 +301,6 @@ const ComponentLibrary = ({ onDragStart, onAddNode, isCollapsed = false }) => {
     e?.dataTransfer?.setData('application/json', JSON.stringify(component));
     if (onDragStart) {
       onDragStart(component);
-    }
-  };
-
-  const handleComponentClick = (component) => {
-    if (onAddNode) {
-      onAddNode(component);
     }
   };
 
@@ -519,12 +330,12 @@ const ComponentLibrary = ({ onDragStart, onAddNode, isCollapsed = false }) => {
       {/* Header */}
       <div className="p-4 border-b border-border">
         <h2 className="text-lg font-semibold text-foreground mb-3">Components</h2>
-        <input
+        <Input
           type="search"
           placeholder="Search components..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e?.target?.value)}
-          className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
+          className="w-full"
         />
       </div>
       {/* Category Tabs */}
@@ -553,7 +364,6 @@ const ComponentLibrary = ({ onDragStart, onAddNode, isCollapsed = false }) => {
                   key={component?.id}
                   draggable
                   onDragStart={(e) => handleDragStart(e, component)}
-                  onClick={() => handleComponentClick(component)}
                   className="group p-3 bg-card border border-border rounded-lg cursor-move hover:shadow-elevation-1 transition-smooth"
                 >
                   <div className="flex items-center space-x-3">

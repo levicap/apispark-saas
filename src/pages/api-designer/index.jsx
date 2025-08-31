@@ -1,792 +1,645 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useProjectContext } from '../../contexts/ProjectContext';
 import Header from '../../components/ui/Header';
 import Sidebar from '../../components/ui/Sidebar';
+import CanvasToolbar from '../../components/ui/CanvasToolbar';
 import ComponentLibrary from './components/ComponentLibrary';
 import WorkflowCanvas from './components/WorkflowCanvas';
 import InspectorPanel from './components/InspectorPanel';
 import ProjectManager from './components/ProjectManager';
 import CodeEditor from './components/CodeEditor';
-import DatabaseExport from '../../components/ui/DatabaseExport';
-import DatabaseSchemaPanel from '../../components/ui/DatabaseSchemaPanel';
-import GraphQLConfigPanel from '../../components/ui/GraphQLConfigPanel';
-import BusinessLogicPanel from '../../components/ui/BusinessLogicPanel';
-import AIAgentEffect from '../../components/ui/AIAgentEffect';
-import { useProjectContext } from '../../contexts/ProjectContext';
+import DatabaseSchemaImport from './components/DatabaseSchemaImport';
+import CodeGenerator from './components/CodeGenerator';
+import ApiKeyGenerator from './components/ApiKeyGenerator';
+import ApiDocumentationGenerator from './components/ApiDocumentationGenerator';
+import TeamManagement from './components/TeamManagement';
 import Button from '../../components/ui/Button';
-
-// Simple Icon component for now
-const Icon = ({ name, size = 16, className = '' }) => (
-  <span className={`inline-block ${className}`} style={{ width: size, height: size }}>
-    {name === 'Plus' && '➕'}
-    {name === 'Folder' && '📁'}
-    {name === 'Database' && '🗄️'}
-    {name === 'Table' && '📊'}
-    {name === 'Network' && '🌐'}
-    {name === 'Briefcase' && '💼'}
-    {name === 'Code' && '💻'}
-    {name === 'Import' && '📥'}
-    {name === 'Settings' && '⚙️'}
-    {name === 'Zap' && '⚡'}
-    {name === 'GitBranch' && '🌿'}
-  </span>
-);
+import Icon from '../../components/AppIcon';
 
 const APIDesigner = () => {
+  const navigate = useNavigate();
+  const { 
+    currentProject, 
+    getCurrentProjectNodes, 
+    updateProjectNodes,
+    getCurrentProjectSchema
+  } = useProjectContext();
+  
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [libraryCollapsed, setLibraryCollapsed] = useState(false);
   const [inspectorCollapsed, setInspectorCollapsed] = useState(false);
-  const [databaseExportOpen, setDatabaseExportOpen] = useState(false);
-  const [databaseSchemaOpen, setDatabaseSchemaOpen] = useState(false);
-  const [graphqlConfigOpen, setGraphqlConfigOpen] = useState(false);
-  const [businessLogicOpen, setBusinessLogicOpen] = useState(false);
   const [selectedNode, setSelectedNode] = useState(null);
   const [workflowNodes, setWorkflowNodes] = useState([]);
+  const [showGrid, setShowGrid] = useState(true);
+  const [history, setHistory] = useState([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const [saveStatus, setSaveStatus] = useState('saved');
+  
+  // Modal states
   const [showProjectManager, setShowProjectManager] = useState(false);
   const [showCodeEditor, setShowCodeEditor] = useState(false);
-  const [importedSchema, setImportedSchema] = useState(null);
-  const [graphqlConfig, setGraphqlConfig] = useState(null);
-  const [businessLogicConfig, setBusinessLogicConfig] = useState(null);
-  const [showAIAgent, setShowAIAgent] = useState(false);
-  const [generatedFiles, setGeneratedFiles] = useState({});
+  const [showDatabaseImport, setShowDatabaseImport] = useState(false);
+  const [showCodeGenerator, setShowCodeGenerator] = useState(false);
+  const [showApiKeyGenerator, setShowApiKeyGenerator] = useState(false);
+  const [showApiDocsGenerator, setShowApiDocsGenerator] = useState(false);
+  const [showTeamManagement, setShowTeamManagement] = useState(false);
 
-  // Project management hook
-  const {
-    projects,
-    currentProject,
-    setCurrentProject,
-    createProject,
-    updateProject,
-    deleteProject,
-    getCurrentProjectSchema,
-    getCurrentProjectEndpoints,
-    updateProjectSchema,
-    updateProjectWorkflow
-  } = useProjectContext();
-
-  // Mock user data
-  const mockUser = {
-    id: 'user_1',
-    name: 'Alex Johnson',
-    email: 'alex.johnson@apiforge.com',
-    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=32&h=32&fit=crop&crop=face'
-  };
-
-  // Load workflow when project changes
+  // Load project nodes when project changes
   useEffect(() => {
-    if (currentProject && currentProject.workflow) {
-      const nodes = currentProject.workflow.nodes || [];
-      setWorkflowNodes(nodes);
-      
-      if (nodes.length > 0) {
-        console.log(`Loaded ${nodes.length} workflow nodes from ${currentProject.name}`);
-      }
-    } else {
-      setWorkflowNodes([]);
+    if (currentProject) {
+      const projectNodes = getCurrentProjectNodes();
+      setWorkflowNodes(projectNodes || []);
+      setSelectedNode(null);
+      setHistory([]);
+      setHistoryIndex(-1);
+      setSaveStatus('saved');
     }
-  }, [currentProject]);
+  }, [currentProject, getCurrentProjectNodes]);
 
-  // Save workflow when nodes change
-  const handleWorkflowChange = useCallback((updatedNodes) => {
-    setWorkflowNodes(updatedNodes);
+  // Auto-save functionality
+  useEffect(() => {
+    const autoSaveInterval = setInterval(() => {
+      if (saveStatus === 'unsaved' && currentProject) {
+        handleSave();
+      }
+    }, 30000); // Auto-save every 30 seconds
+
+    return () => clearInterval(autoSaveInterval);
+  }, [saveStatus, currentProject]);
+
+  const handleSave = useCallback(() => {
+    if (!currentProject) return;
     
-    if (currentProject) {
-      // Extract connections from nodes
-      const connections = [];
-      updatedNodes.forEach(node => {
-        if (node.connections) {
-          node.connections.forEach(conn => {
-            connections.push({
-              id: `${node.id}-${conn.to}`,
-              sourceNodeId: node.id,
-              targetNodeId: conn.to,
-              type: conn.type || 'data'
-            });
-          });
-        }
-      });
-      
-      updateProjectWorkflow(updatedNodes, connections);
-      console.log('Workflow saved successfully!');
-    }
-  }, [currentProject, updateProjectWorkflow]);
+    setSaveStatus('saving');
+    updateProjectNodes(currentProject?.id, workflowNodes);
+    
+    // Simulate save operation
+    setTimeout(() => {
+      setSaveStatus('saved');
+    }, 1000);
+  }, [currentProject, workflowNodes, updateProjectNodes]);
 
-  const handleToggleSidebar = () => {
-    if (window.innerWidth < 1024) {
-      setSidebarOpen(!sidebarOpen);
-    } else {
-      setSidebarCollapsed(!sidebarCollapsed);
-    }
-  };
+  const handleNodeSelect = useCallback((node) => {
+    setSelectedNode(node);
+  }, []);
 
-  const handleCloseSidebar = () => {
-    setSidebarOpen(false);
-  };
-
-  const handleProjectChange = (project) => {
-    setCurrentProject(project);
-    console.log(`Switched to project: ${project.name}`);
-  };
-
-  const handleCreateProject = (projectData) => {
-    const newProject = createProject(projectData);
-    setCurrentProject(newProject);
-    setShowProjectManager(false);
-    console.log(`Project "${newProject.name}" created successfully!`);
-  };
-
-  const handleUpdateProject = (projectId, updatedData) => {
-    const updatedProject = updateProject(projectId, updatedData);
-    console.log(`Project "${updatedProject.name}" updated successfully!`);
-  };
-
-  const handleDeleteProject = (projectId) => {
-    const projectToDelete = projects.find(p => p.id === projectId);
-    if (projectToDelete) {
-      deleteProject(projectId);
-      if (currentProject?.id === projectId) {
-        setCurrentProject(null);
-      }
-      console.log(`Project "${projectToDelete.name}" deleted successfully!`);
-    }
-  };
-
-  const handleDuplicateProject = (projectId) => {
-    const originalProject = projects.find(p => p.id === projectId);
-    if (originalProject) {
-      const duplicatedProject = createProject({
-        name: `${originalProject.name} (Copy)`,
-        description: originalProject.description,
-        databaseType: originalProject.databaseType,
-        metadata: originalProject.metadata
-      });
-      console.log(`Project "${duplicatedProject.name}" duplicated successfully!`);
-    }
-  };
-
-  const handleNodeSelect = (node) => {
-    // Always select the latest node object from workflowNodes
-    const latest = workflowNodes.find(n => n.id === node.id) || node;
-    console.log('[handleNodeSelect] node:', node, 'latest:', latest);
-    setSelectedNode(latest);
-  };
-
-  const handleNodesChange = (nodes) => {
-    console.log('[handleNodesChange] nodes:', nodes);
-    setWorkflowNodes(nodes);
-    // If a node is selected, keep it selected after nodes change
-    if (selectedNode) {
-      const latest = nodes.find(n => n.id === selectedNode.id);
-      if (latest) setSelectedNode(latest);
-    }
-    // Auto-save to current project
-    if (currentProject) {
-      // Extract connections from nodes
-      const connections = [];
-      nodes.forEach(node => {
-        if (node.connections) {
-          node.connections.forEach(conn => {
-            connections.push({
-              id: `${node.id}-${conn.to}`,
-              sourceNodeId: node.id,
-              targetNodeId: conn.to,
-              type: conn.type || 'data'
-            });
-          });
-        }
-      });
-      updateProjectWorkflow(nodes, connections);
-    }
-  };
-
-  const handleNodeUpdate = (updatedNode) => {
-    console.log('[handleNodeUpdate] updatedNode:', updatedNode);
-    const updatedNodes = workflowNodes?.map(node => {
-      if (node?.id === updatedNode?.id) {
-        // Always preserve connections array if not present in updatedNode
-        return {
-          ...updatedNode,
-          connections: updatedNode.connections ?? node.connections ?? [],
-        };
-      }
-      return node;
-    });
-    console.log('[handleNodeUpdate] updatedNodes:', updatedNodes);
-    setWorkflowNodes(updatedNodes);
-    setSelectedNode(updatedNodes.find(n => n.id === updatedNode.id));
-    if (currentProject) {
-      // Extract connections from nodes
-      const connections = [];
-      updatedNodes.forEach(node => {
-        if (node.connections) {
-          node.connections.forEach(conn => {
-            connections.push({
-              id: `${node.id}-${conn.to}`,
-              sourceNodeId: node.id,
-              targetNodeId: conn.to,
-              type: conn.type || 'data'
-            });
-          });
-        }
-      });
-      updateProjectWorkflow(updatedNodes, connections);
-    }
-  };
-
-  const handleNodeRemove = (nodeId) => {
-    const nodeToRemove = workflowNodes.find(n => n.id === nodeId);
-    if (nodeToRemove) {
-      setWorkflowNodes(prev => prev.filter(n => n.id !== nodeId));
-      if (selectedNode?.id === nodeId) {
-        setSelectedNode(null);
-      }
-      console.log(`Removed ${nodeToRemove.name} node from workflow`);
-    }
-  };
-
-  const handleDragStart = (component) => {
-    // Handle drag start from component library
-    console.log('Dragging component:', component);
-  };
-
-  const handleAddNode = (nodeData) => {
+  const handleNodeAdd = useCallback((node) => {
     const newNode = {
-      id: `node-${Date.now()}`,
-      type: nodeData.type,
-      name: nodeData.name,
-      position: { x: 100, y: 100 },
-      data: nodeData.data || {},
-      connections: []
+      ...node,
+      id: node?.id || `node-${Date.now()}`,
+      position: node?.position || { x: 200, y: 200 }
     };
     
     setWorkflowNodes(prev => [...prev, newNode]);
-    console.log(`Added ${nodeData.name} node to workflow`);
-  };
-
-  const handleDatabaseExport = (exportedData, format) => {
-    if (currentProject) {
-      // Save exported data to project metadata
-      const updatedProject = {
-        ...currentProject,
-        metadata: {
-          ...currentProject.metadata,
-          lastExport: {
-            timestamp: new Date().toISOString(),
-            format: format,
-            data: exportedData
-          }
-        }
-      };
-      updateProject(updatedProject);
-      console.log(`Database exported successfully in ${format} format!`);
-    }
-  };
-
-  const handleImportSchema = (schema) => {
-    setImportedSchema(schema);
-    setDatabaseSchemaOpen(false);
+    setSaveStatus('unsaved');
     
+    // Add to history
+    setHistory(prev => [...prev?.slice(0, historyIndex + 1), { type: 'add-node', node: newNode }]);
+    setHistoryIndex(prev => prev + 1);
+  }, [historyIndex]);
+
+  const handleNodeUpdate = useCallback((updatedNode) => {
+    setWorkflowNodes(prev => prev?.map(node => 
+      node?.id === updatedNode?.id ? updatedNode : node
+    ));
+    setSaveStatus('unsaved');
+  }, []);
+
+  const handleNodeMove = useCallback((nodeId, newPosition) => {
+    setWorkflowNodes(prev => prev?.map(node => 
+      node?.id === nodeId ? { ...node, position: newPosition } : node
+    ));
+    setSaveStatus('unsaved');
+  }, []);
+
+  const handleNodeDelete = useCallback((nodeId) => {
+    setWorkflowNodes(prev => prev?.filter(node => node?.id !== nodeId));
+    if (selectedNode?.id === nodeId) {
+      setSelectedNode(null);
+    }
+    setSaveStatus('unsaved');
+  }, [selectedNode]);
+
+  const handleUndo = useCallback(() => {
+    if (historyIndex >= 0) {
+      const action = history?.[historyIndex];
+      if (action?.type === 'add-node') {
+        setWorkflowNodes(prev => prev?.filter(n => n?.id !== action?.node?.id));
+      }
+      setHistoryIndex(prev => prev - 1);
+      setSaveStatus('unsaved');
+    }
+  }, [history, historyIndex]);
+
+  const handleRedo = useCallback(() => {
+    if (historyIndex < history?.length - 1) {
+      const action = history?.[historyIndex + 1];
+      if (action?.type === 'add-node') {
+        setWorkflowNodes(prev => [...prev, action?.node]);
+      }
+      setHistoryIndex(prev => prev + 1);
+      setSaveStatus('unsaved');
+    }
+  }, [history, historyIndex]);
+
+  const handleAlignNodes = useCallback(() => {
+    // Simple grid alignment
+    setWorkflowNodes(prev => prev?.map((node, index) => ({
+      ...node,
+      position: {
+        x: 100 + (index % 4) * 350,
+        y: 100 + Math.floor(index / 4) * 250
+      }
+    })));
+    setSaveStatus('unsaved');
+  }, []);
+
+  const handleImportDatabaseSchema = (schemas) => {
+    // Generate nodes from imported database schemas
+    const newNodes = [];
+    let xOffset = 100;
+    let yOffset = 100;
+
+    schemas.forEach((schema, index) => {
+      // Create database table node
+      newNodes.push({
+        id: `table_${schema.name}_${Date.now()}`,
+        type: 'table',
+        name: `${schema.name} Table`,
+        color: 'bg-gray-600',
+        icon: 'Table',
+        position: { x: xOffset + (index * 300), y: yOffset },
+        data: {
+          method: 'TABLE',
+          endpoint: schema.name,
+          description: `Database table: ${schema.name}`,
+          parameters: [],
+          responses: {},
+          databaseType: 'table',
+          schema: schema
+        },
+        connections: []
+      });
+
+      // Create GET endpoint for the table
+      newNodes.push({
+        id: `get_${schema.name}_${Date.now()}`,
+        type: 'get',
+        name: `GET ${schema.name}`,
+        color: 'bg-green-500',
+        icon: 'Download',
+        position: { x: xOffset + (index * 300), y: yOffset + 150 },
+        data: {
+          method: 'GET',
+          endpoint: `/api/${schema.name}`,
+          description: `Retrieve all ${schema.name}`,
+          parameters: [
+            { name: 'page', type: 'number', required: false },
+            { name: 'limit', type: 'number', required: false }
+          ],
+          responses: {
+            200: { description: 'Success', schema: `${schema.name}[]` },
+            400: { description: 'Bad Request' }
+          }
+        },
+        connections: [
+          { targetId: `table_${schema.name}_${Date.now()}`, type: 'default' }
+        ]
+      });
+
+      // Create POST endpoint for the table
+      newNodes.push({
+        id: `post_${schema.name}_${Date.now()}`,
+        type: 'post',
+        name: `POST ${schema.name}`,
+        color: 'bg-blue-500',
+        icon: 'Plus',
+        position: { x: xOffset + (index * 300), y: yOffset + 300 },
+        data: {
+          method: 'POST',
+          endpoint: `/api/${schema.name}`,
+          description: `Create new ${schema.name}`,
+          parameters: schema.columns
+            .filter(col => !col.name.includes('id') && !col.name.includes('created_at') && !col.name.includes('updated_at'))
+            .map(col => ({
+              name: col.name,
+              type: col.type.includes('VARCHAR') ? 'string' : 
+                    col.type.includes('INT') ? 'number' : 
+                    col.type.includes('DECIMAL') ? 'number' : 'string',
+              required: !col.nullable
+            })),
+          responses: {
+            201: { description: 'Created', schema: schema.name },
+            400: { description: 'Bad Request' }
+          }
+        },
+        connections: [
+          { targetId: `table_${schema.name}_${Date.now()}`, type: 'default' }
+        ]
+      });
+    });
+
+    // Add new nodes to existing workflow
+    const updatedNodes = [...workflowNodes, ...newNodes];
+    setWorkflowNodes(updatedNodes);
+
+    // Auto-save to current project
     if (currentProject) {
-      // Save to project metadata
-      const updatedProject = {
-        ...currentProject,
-        metadata: {
-          ...currentProject.metadata,
-          importedSchema: schema
-        }
-      };
-      updateProject(updatedProject);
-      console.log(`Imported ${schema.entities.length} entities from database schema!`);
+      updateProjectNodes(currentProject?.id, updatedNodes);
     }
   };
 
-  const handleGenerateEndpoints = () => {
-    if (!importedSchema) {
-      console.error('Please import a database schema first');
+  const handleImportSchemaEntities = () => {
+    const projectSchema = getCurrentProjectSchema();
+    const entities = projectSchema?.entities || [];
+    
+    if (entities.length === 0) {
+      alert('No entities found in schema canvas. Please create entities first.');
       return;
     }
 
-    // Generate API endpoints based on imported schema
-    const generatedEndpoints = importedSchema.entities.map(entity => ({
-      id: `endpoint-${entity.id}`,
-      name: entity.name,
-      path: `/api/${entity.name}`,
-      method: 'GET',
-      description: `Retrieve ${entity.name} data`,
-      entity: entity
-    }));
+    // Generate nodes from schema entities
+    const newNodes = [];
+    let xOffset = 100;
+    let yOffset = 100;
 
-    // Add to workflow nodes
-    const newNodes = generatedEndpoints.map((endpoint, index) => ({
-      id: endpoint.id,
-      type: 'api-endpoint',
-      name: endpoint.name,
-      position: { x: 600 + (index * 200), y: 100 + (index * 100) },
-      data: endpoint,
-      connections: []
-    }));
+    entities.forEach((entity, index) => {
+      // Create entity node
+      newNodes.push({
+        id: `entity_${entity.name}_${Date.now()}`,
+        type: 'entity',
+        name: `${entity.name} Entity`,
+        color: 'bg-purple-600',
+        icon: 'Database',
+        position: { x: xOffset + (index * 300), y: yOffset },
+        data: {
+          method: 'ENTITY',
+          endpoint: entity.name,
+          description: `Entity: ${entity.name}`,
+          parameters: [],
+          responses: {},
+          entityType: 'entity',
+          entity: entity
+        },
+        connections: []
+      });
 
-    setWorkflowNodes(prev => [...prev, ...newNodes]);
-    console.log(`Generated ${generatedEndpoints.length} API endpoints from database schema!`);
-  };
+      // Create GET endpoint for the entity
+      newNodes.push({
+        id: `get_entity_${entity.name}_${Date.now()}`,
+        type: 'get',
+        name: `GET ${entity.name}`,
+        color: 'bg-green-500',
+        icon: 'Download',
+        position: { x: xOffset + (index * 300), y: yOffset + 150 },
+        data: {
+          method: 'GET',
+          endpoint: `/api/${entity.name}`,
+          description: `Retrieve all ${entity.name}`,
+          parameters: [
+            { name: 'page', type: 'number', required: false },
+            { name: 'limit', type: 'number', required: false }
+          ],
+          responses: {
+            200: { description: 'Success', schema: `${entity.name}[]` },
+            400: { description: 'Bad Request' }
+          }
+        },
+        connections: [
+          { targetId: `entity_${entity.name}_${Date.now()}`, type: 'default' }
+        ]
+      });
 
-  const handleGraphQLConfigSave = (config) => {
-    setGraphqlConfig(config);
-    setGraphqlConfigOpen(false);
+      // Create POST endpoint for the entity
+      newNodes.push({
+        id: `post_entity_${entity.name}_${Date.now()}`,
+        type: 'post',
+        name: `POST ${entity.name}`,
+        color: 'bg-blue-500',
+        icon: 'Plus',
+        position: { x: xOffset + (index * 300), y: yOffset + 300 },
+        data: {
+          method: 'POST',
+          endpoint: `/api/${entity.name}`,
+          description: `Create new ${entity.name}`,
+          parameters: entity.fields
+            ?.filter(field => !field.name.includes('id') && !field.primaryKey)
+            ?.map(field => ({
+              name: field.name,
+              type: field.type === 'bigint' ? 'number' : 
+                    field.type === 'varchar' ? 'string' : 
+                    field.type === 'text' ? 'string' : 
+                    field.type === 'timestamp' ? 'string' : 'string',
+              required: !field.nullable
+            })) || [],
+          responses: {
+            201: { description: 'Created', schema: entity.name },
+            400: { description: 'Bad Request' }
+          }
+        },
+        connections: [
+          { targetId: `entity_${entity.name}_${Date.now()}`, type: 'default' }
+        ]
+      });
+    });
+
+    // Add new nodes to existing workflow
+    const updatedNodes = [...workflowNodes, ...newNodes];
+    setWorkflowNodes(updatedNodes);
     
+    // Auto-save to current project
     if (currentProject) {
-      // Save to project metadata
-      const updatedProject = {
-        ...currentProject,
-        metadata: {
-          ...currentProject.metadata,
-          graphql: config
-        }
-      };
-      updateProject(updatedProject);
-      console.log('GraphQL configuration saved successfully!');
-    }
-  };
-
-  const handleBusinessLogicSave = (config) => {
-    setBusinessLogicConfig(config);
-    if (currentProject) {
-      // Save to project metadata
-      const updatedProject = {
-        ...currentProject,
-        metadata: {
-          ...currentProject.metadata,
-          businessLogic: config
-        }
-      };
-      updateProject(updatedProject);
-      console.log('Business logic configuration saved!');
+      updateProjectNodes(currentProject?.id, updatedNodes);
     }
   };
 
   const handleGenerateCode = () => {
-    if (!currentProject) {
-      console.error('Please select a project first');
-      return;
+    setShowCodeGenerator(true);
+  };
+
+  const getSaveStatusIcon = () => {
+    switch (saveStatus) {
+      case 'saving': return 'Loader2';
+      case 'saved': return 'Check';
+      case 'unsaved': return 'AlertCircle';
+      default: return 'Save';
     }
+  };
 
-    if (workflowNodes.length === 0) {
-      console.error('Please add some nodes to your workflow first');
-      return;
+  const getSaveStatusText = () => {
+    switch (saveStatus) {
+      case 'saving': return 'Saving...';
+      case 'saved': return 'All changes saved';
+      case 'unsaved': return 'Unsaved changes';
+      default: return 'Save';
     }
-
-    setShowAIAgent(true);
-    console.log('Starting AI code generation...');
   };
 
-  const handleAIGenerationComplete = () => {
-    setShowAIAgent(false);
-    console.log('Code generation completed successfully!');
-    
-    // Show code editor with generated code
-    setShowCodeEditor(true);
-  };
-
-  const handleOpenCodeEditor = () => {
-    setShowCodeEditor(true);
-    console.log('Code editor opened');
-  };
-
-  const handleCloseCodeEditor = () => {
-    setShowCodeEditor(false);
-    console.log('Code editor closed');
-  };
-
-  const handleConnectionCreate = (connection) => {
-    // Update the source node with the new connection
-    const updatedNodes = workflowNodes.map(node => {
-      if (node.id === connection.from) {
-        return {
-          ...node,
-          connections: [...(node.connections || []), { to: connection.to, type: connection.type }]
-        };
-      }
-      return node;
-    });
-    
-    setWorkflowNodes(updatedNodes);
-    console.log(`Connected ${connection.from} to ${connection.to}`);
-  };
-
-  const handleConnectionRemove = (fromNodeId, toNodeId) => {
-    const updatedNodes = workflowNodes.map(node => {
-      if (node.id === fromNodeId) {
-        return {
-          ...node,
-          connections: (node.connections || []).filter(conn => conn.to !== toNodeId)
-        };
-      }
-      return node;
-    });
-    
-    setWorkflowNodes(updatedNodes);
-    console.log(`Removed connection from ${fromNodeId} to ${toNodeId}`);
-  };
-
-  const handleOpenDatabaseExport = () => {
-    setDatabaseExportOpen(true);
-    console.log('Database export panel opened');
-  };
-
-  const handleOpenDatabaseSchema = () => {
-    setDatabaseSchemaOpen(true);
-    console.log('Database schema panel opened');
-  };
-
-  const handleOpenGraphQLConfig = () => {
-    setGraphqlConfigOpen(true);
-    console.log('GraphQL configuration panel opened');
-  };
-
-  const handleOpenBusinessLogic = () => {
-    setBusinessLogicOpen(true);
-    console.log('Business logic panel opened');
-  };
+  if (!currentProject) {
+    return (
+      <div className="h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <Icon name="Code" size={64} className="mx-auto mb-4 text-text-secondary opacity-50" />
+          <h2 className="text-xl font-semibold text-text-primary mb-2">No Project Selected</h2>
+          <p className="text-text-secondary">Please select a project from the header to start designing your API.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex h-screen bg-background">
-      {/* Sidebar */}
-      <Sidebar
-        isOpen={sidebarOpen}
-        isCollapsed={sidebarCollapsed}
-        onToggle={handleToggleSidebar}
-        onClose={handleCloseSidebar}
-        currentUser={mockUser}
-        currentProject={currentProject}
-      />
-
+    <div className="h-screen bg-background flex flex-col overflow-hidden">
+      {/* Header */}
+      <Header />
+      
       {/* Main Content */}
-      <div className={`flex-1 flex flex-col transition-all duration-300 ${
-        sidebarCollapsed ? 'ml-16' : 'ml-64'
-      }`}>
-        {/* Header */}
-        <Header
-          currentUser={mockUser}
-          currentProject={currentProject}
-          onProjectChange={handleProjectChange}
-          sidebarOpen={sidebarOpen}
-          onToggleSidebar={handleToggleSidebar}
+      <div className="flex-1 flex pt-16">
+        {/* Main Sidebar */}
+        <Sidebar
+          isCollapsed={sidebarCollapsed}
+          onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
         />
 
-        {/* Page Content */}
-        <div className="flex-1 overflow-hidden">
-          <div className="h-full flex">
-            {/* Component Library */}
-            <div className={`${libraryCollapsed ? 'w-16' : 'w-64'} transition-all duration-300 border-r border-border flex-shrink-0`}>
-              <ComponentLibrary
-                onDragStart={handleDragStart}
-                onAddNode={handleAddNode}
-                isCollapsed={libraryCollapsed}
-              />
-            </div>
+        {/* Content Area */}
+        <div className={`flex-1 flex transition-all duration-300 ${sidebarCollapsed ? 'ml-16' : 'ml-60'}`}>
+          
+          {/* Component Library */}
+          <ComponentLibrary onNodeAdd={handleNodeAdd} />
 
-            {/* Workflow Canvas */}
-            <div className="flex-1 flex flex-col">
-              {/* Toolbar */}
-              <div className="flex items-center justify-between p-4 border-b border-border">
-                <div className="flex items-center space-x-4">
-                  <Button
-                    onClick={() => setLibraryCollapsed(!libraryCollapsed)}
-                    variant="outline"
-                    size="sm"
-                  >
-                    <Icon name="Plus" size={16} className="mr-2" />
-                    Add Component
-                  </Button>
-                  <Button
-                    onClick={() => setShowProjectManager(true)}
-                    variant="outline"
-                    size="sm"
-                  >
-                    <Icon name="Folder" size={16} className="mr-2" />
-                    Projects
-                  </Button>
-                  <Button
-                    onClick={handleOpenDatabaseExport}
-                    variant="outline"
-                    size="sm"
-                  >
-                    <Icon name="Database" size={16} className="mr-2" />
-                    Database Export
-                  </Button>
-                  <Button
-                    onClick={handleOpenDatabaseSchema}
-                    variant="outline"
-                    size="sm"
-                  >
-                    <Icon name="Table" size={16} className="mr-2" />
-                    Import Schema
-                  </Button>
-                  <Button
-                    onClick={handleOpenGraphQLConfig}
-                    variant="outline"
-                    size="sm"
-                  >
-                    <Icon name="Network" size={16} className="mr-2" />
-                    GraphQL Config
-                  </Button>
-                  <Button
-                    onClick={handleOpenBusinessLogic}
-                    variant="outline"
-                    size="sm"
-                  >
-                    <Icon name="Briefcase" size={16} className="mr-2" />
-                    Business Logic
-                  </Button>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Button
-                    onClick={handleGenerateCode}
-                    className="bg-primary text-primary-foreground hover:bg-primary/90"
-                    size="sm"
-                  >
-                    <Icon name="Code" size={16} className="mr-2" />
-                    Generate Code
-                  </Button>
+          {/* Canvas Area */}
+          <div className="flex-1 flex flex-col relative">
+            
+            {/* Project Header */}
+            <div className="bg-surface border-b border-border px-6 py-3 flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div>
+                  <h1 className="text-lg font-semibold text-text-primary">{currentProject?.name}</h1>
+                  <div className="flex items-center space-x-4 text-sm text-text-secondary">
+                    <span>{workflowNodes?.length} nodes</span>
+                    <span>Type: {currentProject?.type || 'REST'}</span>
+                    <span>Modified {new Date(currentProject?.updatedAt)?.toLocaleDateString()}</span>
+                  </div>
                 </div>
               </div>
 
-              {/* Canvas Area */}
-              <div className="flex-1 relative overflow-hidden">
-                <WorkflowCanvas
-                  onNodeSelect={handleNodeSelect}
-                  selectedNode={selectedNode}
-                  onNodesChange={handleWorkflowChange}
-                  nodes={workflowNodes}
-                  onConnectionCreate={handleConnectionCreate}
-                  onNodeRemove={handleNodeRemove}
-                  onConnectionRemove={handleConnectionRemove}
-                />
+              <div className="flex items-center space-x-3">
+                {/* Save Status */}
+                <div className="flex items-center space-x-2 text-sm">
+                  <Icon 
+                    name={getSaveStatusIcon()} 
+                    size={16} 
+                    className={`${
+                      saveStatus === 'saving' ? 'animate-spin' : ''
+                    } ${
+                      saveStatus === 'saved' ? 'text-success' : 
+                      saveStatus === 'unsaved'? 'text-warning' : 'text-text-secondary'
+                    }`}
+                  />
+                  <span className="text-text-secondary">{getSaveStatusText()}</span>
+                </div>
+
+                {/* Action Buttons */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  iconName="Database"
+                  iconPosition="left"
+                  onClick={() => setShowDatabaseImport(true)}
+                >
+                  Import DB
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  iconName="Database"
+                  iconPosition="left"
+                  onClick={handleImportSchemaEntities}
+                >
+                  Import Schema
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  iconName="Key"
+                  iconPosition="left"
+                  onClick={() => setShowApiKeyGenerator(true)}
+                >
+                  API Keys
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  iconName="FileText"
+                  iconPosition="left"
+                  onClick={() => setShowApiDocsGenerator(true)}
+                >
+                  Docs
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  iconName="Users"
+                  iconPosition="left"
+                  onClick={() => setShowTeamManagement(true)}
+                >
+                  Team
+                </Button>
+
+                <Button
+                  variant="default"
+                  size="sm"
+                  iconName="Code"
+                  iconPosition="left"
+                  onClick={handleGenerateCode}
+                >
+                  Generate Code
+                </Button>
+
+                {/* Panel Toggles */}
+                <div className="flex items-center space-x-1 border-l border-border pl-3">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    iconName="PanelRight"
+                    iconSize={16}
+                    onClick={() => setInspectorCollapsed(!inspectorCollapsed)}
+                    className={inspectorCollapsed ? 'text-text-secondary' : 'text-primary'}
+                    title="Toggle Inspector Panel"
+                  />
+                </div>
               </div>
             </div>
 
-            {/* Inspector Panel */}
-            <div className={`${inspectorCollapsed ? 'w-16' : 'w-80'} transition-all duration-300 border-l border-border flex-shrink-0`}>
-              <InspectorPanel
-                selectedNode={selectedNode}
-                onNodeUpdate={handleNodeUpdate}
-                isCollapsed={inspectorCollapsed}
-              />
+            {/* Canvas */}
+            <WorkflowCanvas
+              nodes={workflowNodes}
+              onNodeSelect={handleNodeSelect}
+              onNodeMove={handleNodeMove}
+              onNodeUpdate={handleNodeUpdate}
+              onNodeAdd={handleNodeAdd}
+              selectedNodeId={selectedNode?.id}
+              showGrid={showGrid}
+            />
+
+            {/* Canvas Toolbar */}
+            <CanvasToolbar
+              onAddNode={() => handleNodeAdd({
+                name: 'New Endpoint',
+                type: 'get',
+                color: 'bg-green-500',
+                icon: 'Download'
+              })}
+              onAlignNodes={handleAlignNodes}
+              onUndo={handleUndo}
+              onRedo={handleRedo}
+              onZoomIn={() => {}}
+              onZoomOut={() => {}}
+              onZoomFit={() => {}}
+              onToggleGrid={() => setShowGrid(!showGrid)}
+              canUndo={historyIndex >= 0}
+              canRedo={historyIndex < history?.length - 1}
+              showGrid={showGrid}
+            />
+
+            {/* Floating Quick Actions */}
+            <div className="absolute bottom-6 right-6 flex flex-col space-y-2">
+              <Button
+                variant="default"
+                size="icon"
+                onClick={() => setShowDatabaseImport(true)}
+                className="w-12 h-12 rounded-full shadow-lg"
+                title="Import Database Schema"
+              >
+                <Icon name="Database" size={20} />
+              </Button>
+              
+              <Button
+                variant="default"
+                size="icon"
+                onClick={handleImportSchemaEntities}
+                className="w-12 h-12 rounded-full shadow-lg"
+                title="Import Schema Entities"
+              >
+                <Icon name="Table" size={20} />
+              </Button>
+              
+              <Button
+                variant="default"
+                size="icon"
+                onClick={handleGenerateCode}
+                className="w-12 h-12 rounded-full shadow-lg"
+                title="Generate Code"
+              >
+                <Icon name="Code" size={20} />
+              </Button>
             </div>
           </div>
-        </div>
 
-        {/* Status Bar */}
-        <div className="h-8 bg-surface border-t border-border flex items-center justify-between px-4 text-xs text-muted-foreground">
-          <div className="flex items-center space-x-4">
-            <span>Project: {currentProject?.name || 'No project selected'}</span>
-            <span>•</span>
-            <span>Nodes: {workflowNodes?.length}</span>
-            <span>•</span>
-            <span>Framework: {currentProject?.metadata?.framework || 'Express.js'}</span>
-            {importedSchema && (
-              <>
-                <span>•</span>
-                <span className="text-primary">DB Schema: {importedSchema.entities.length} entities</span>
-              </>
-            )}
-            {graphqlConfig && (
-              <>
-                <span>•</span>
-                <span className="text-purple-500">GraphQL: {graphqlConfig.entities.length} entities</span>
-              </>
-            )}
-            {businessLogicConfig && (
-              <>
-                <span>•</span>
-                <span className="text-green-500">Business Logic: {businessLogicConfig.entities.length} entities</span>
-              </>
-            )}
-            <span>•</span>
-            <span className="flex items-center space-x-1">
-              <div className="w-2 h-2 bg-success rounded-full"></div>
-              <span>Connected</span>
-            </span>
-          </div>
-          <div className="flex items-center space-x-4">
-            <Button
-              onClick={handleOpenDatabaseExport}
-              variant="ghost"
-              size="sm"
-              className={`text-xs py-1 px-2 h-6 ${
-                databaseExportOpen ? 'bg-primary text-primary-foreground' : ''
-              }`}
-            >
-              <Icon name="Database" size={12} className="mr-1" />
-              DB Export
-            </Button>
-            <Button
-              onClick={handleOpenDatabaseSchema}
-              variant="ghost"
-              size="sm"
-              className={`text-xs py-1 px-2 h-6 ${
-                databaseSchemaOpen ? 'bg-primary text-primary-foreground' : ''
-              }`}
-            >
-              <Icon name="GitBranch" size={12} className="mr-1" />
-              DB Import
-            </Button>
-            <Button
-              onClick={handleOpenGraphQLConfig}
-              variant="ghost"
-              size="sm"
-              className={`text-xs py-1 px-2 h-6 ${
-                graphqlConfigOpen ? 'bg-primary text-primary-foreground' : ''
-              }`}
-            >
-              <Icon name="Network" size={12} className="mr-1" />
-              GraphQL
-            </Button>
-            <Button
-              onClick={handleOpenBusinessLogic}
-              variant="ghost"
-              size="sm"
-              className={`text-xs py-1 px-2 h-6 ${
-                businessLogicOpen ? 'bg-primary text-primary-foreground' : ''
-              }`}
-            >
-              <Icon name="Briefcase" size={12} className="mr-1" />
-              Business Logic
-            </Button>
-            <Button
-              onClick={handleGenerateCode}
-              variant="ghost"
-              size="sm"
-              className="text-xs py-1 px-2 h-6 bg-primary text-primary-foreground"
-            >
-              <Icon name="Code" size={12} className="mr-1" />
-              Generate Code
-            </Button>
-            <span>Last saved: 2 minutes ago</span>
-            <span>•</span>
-            <span>Auto-save: On</span>
+          {/* Inspector Panel */}
+          <div className={`transition-all duration-300 ${inspectorCollapsed ? 'w-0' : 'w-80'} hidden lg:block`}>
+            <InspectorPanel
+              selectedNode={selectedNode}
+              onNodeUpdate={handleNodeUpdate}
+              onNodeDelete={handleNodeDelete}
+              onClose={() => setSelectedNode(null)}
+              isCollapsed={inspectorCollapsed}
+            />
           </div>
         </div>
       </div>
 
-      {/* Quick Actions Menu */}
-      <div className="fixed bottom-6 right-6 z-40">
-        <div className="flex flex-col space-y-3">
-          <Button
-            onClick={handleOpenDatabaseExport}
-            className="w-12 h-12 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700 text-white"
-            title="Database Export"
-          >
-            <Icon name="Database" size={20} />
-          </Button>
-          
-          <Button
-            onClick={handleOpenDatabaseSchema}
-            className="w-12 h-12 rounded-full shadow-lg bg-green-600 hover:bg-green-700 text-white"
-            title="Import Database Schema"
-          >
-            <Icon name="Import" size={20} />
-          </Button>
-          
-          <Button
-            onClick={handleOpenGraphQLConfig}
-            className="w-12 h-12 rounded-full shadow-lg bg-purple-600 hover:bg-purple-700 text-white"
-            title="GraphQL Configuration"
-          >
-            <Icon name="Code" size={20} />
-          </Button>
-          
-          <Button
-            onClick={handleOpenBusinessLogic}
-            className="w-12 h-12 rounded-full shadow-lg bg-orange-600 hover:bg-orange-700 text-white"
-            title="Business Logic"
-          >
-            <Icon name="Settings" size={20} />
-          </Button>
-          
-          <Button
-            onClick={handleGenerateCode}
-            className="w-12 h-12 rounded-full shadow-lg bg-primary hover:bg-primary/90 text-white"
-            title="Generate Code"
-          >
-            <Icon name="Zap" size={20} />
-          </Button>
-        </div>
-      </div>
-
-      {/* Database Export Panel */}
-      {databaseExportOpen && (
-        <div className="fixed bottom-24 right-6 w-80 bg-popover border border-border rounded-lg shadow-elevation-2 z-40 p-4">
-          <DatabaseExport 
-            onExport={handleDatabaseExport}
-            className="max-h-96 overflow-y-auto"
-          />
-        </div>
-      )}
-
-      {/* Database Schema Import Panel */}
-      {databaseSchemaOpen && (
-        <div className="fixed bottom-24 right-6 w-80 bg-popover border border-border rounded-lg shadow-elevation-2 z-40 p-4">
-          <DatabaseSchemaPanel 
-            onImportSchema={handleImportSchema}
-            onGenerateEndpoints={handleGenerateEndpoints}
-            className="max-h-96 overflow-y-auto"
-          />
-        </div>
-      )}
-
-      {/* GraphQL Configuration Panel */}
-      {graphqlConfigOpen && (
-        <div className="fixed bottom-24 right-6 w-80 bg-popover border border-border rounded-lg shadow-elevation-2 z-40 p-4">
-          <GraphQLConfigPanel 
-            onSave={handleGraphQLConfigSave}
-            className="max-h-96 overflow-y-auto"
-          />
-        </div>
-      )}
-
-      {/* Business Logic Configuration Panel */}
-      {businessLogicOpen && (
-        <div className="fixed bottom-24 right-6 w-80 bg-popover border border-border rounded-lg shadow-elevation-2 z-40 p-4">
-          <BusinessLogicPanel 
-            onSave={handleBusinessLogicSave}
-            className="max-h-96 overflow-y-auto"
-          />
-        </div>
-      )}
-
-      {/* Project Manager Modal */}
+      {/* Modals */}
       <ProjectManager
-        projects={projects}
-        currentProject={currentProject}
-        onCreateProject={handleCreateProject}
-        onUpdateProject={handleUpdateProject}
-        onDeleteProject={handleDeleteProject}
-        onDuplicateProject={handleDuplicateProject}
-        onProjectSelect={handleProjectChange}
         isOpen={showProjectManager}
         onClose={() => setShowProjectManager(false)}
       />
 
-      {/* Code Editor */}
       <CodeEditor
         isOpen={showCodeEditor}
-        onClose={handleCloseCodeEditor}
+        onClose={() => setShowCodeEditor(false)}
         selectedNode={selectedNode}
         workflowNodes={workflowNodes}
         currentProject={currentProject}
-        generatedFiles={generatedFiles}
       />
 
-      {/* AI Agent Effect */}
-      <AIAgentEffect
-        isActive={showAIAgent}
-        onComplete={handleAIGenerationComplete}
-        projectName={currentProject?.name || 'Project'}
-        workflowNodes={workflowNodes}
-        currentProject={currentProject}
-        onFilesGenerated={setGeneratedFiles}
+      <DatabaseSchemaImport
+        isOpen={showDatabaseImport}
+        onClose={() => setShowDatabaseImport(false)}
+        onImport={handleImportDatabaseSchema}
       />
+
+      <CodeGenerator
+        isOpen={showCodeGenerator}
+        onClose={() => setShowCodeGenerator(false)}
+        nodes={workflowNodes}
+        currentProject={currentProject}
+      />
+
+      <ApiKeyGenerator
+        isOpen={showApiKeyGenerator}
+        onClose={() => setShowApiKeyGenerator(false)}
+        currentProject={currentProject}
+      />
+
+      <ApiDocumentationGenerator
+        isOpen={showApiDocsGenerator}
+        onClose={() => setShowApiDocsGenerator(false)}
+        nodes={workflowNodes}
+        currentProject={currentProject}
+      />
+
+      <TeamManagement
+        isOpen={showTeamManagement}
+        onClose={() => setShowTeamManagement(false)}
+        currentProject={currentProject}
+      />
+
+      {/* Mobile Bottom Navigation Spacer */}
+      <div className="h-16 md:hidden" />
     </div>
   );
 };

@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useProjectContext } from '../../contexts/ProjectContext';
 import Header from '../../components/ui/Header';
 import Sidebar from '../../components/ui/Sidebar';
 import CanvasToolbar from '../../components/ui/CanvasToolbar';
@@ -12,6 +13,12 @@ import Icon from '../../components/AppIcon';
 
 const SchemaCanvasDesigner = () => {
   const navigate = useNavigate();
+  const { 
+    currentProject, 
+    getCurrentProjectSchema, 
+    updateProjectSchema 
+  } = useProjectContext();
+  
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [explorerCollapsed, setExplorerCollapsed] = useState(false);
   const [inspectorCollapsed, setInspectorCollapsed] = useState(false);
@@ -23,40 +30,44 @@ const SchemaCanvasDesigner = () => {
   const [showGrid, setShowGrid] = useState(true);
   const [history, setHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
-  const [projectName, setProjectName] = useState('Untitled Schema');
   const [saveStatus, setSaveStatus] = useState('saved');
 
-  // Mock project data
-  const mockProject = {
-    id: 'project-1',
-    name: 'E-commerce Database Schema',
-    description: 'Complete database schema for e-commerce platform',
-    lastModified: new Date(),
-    collaborators: 3
-  };
-
+  // Load project schema when project changes
   useEffect(() => {
-    setProjectName(mockProject?.name);
-  }, []);
+    if (currentProject) {
+      const projectSchema = getCurrentProjectSchema();
+      setEntities(projectSchema.entities || []);
+      setConnections(projectSchema.connections || []);
+      setSelectedEntity(null);
+      setSelectedConnection(null);
+      setHistory([]);
+      setHistoryIndex(-1);
+      setSaveStatus('saved');
+    }
+  }, [currentProject, getCurrentProjectSchema]);
 
   // Auto-save functionality
   useEffect(() => {
     const autoSaveInterval = setInterval(() => {
-      if (saveStatus === 'unsaved') {
+      if (saveStatus === 'unsaved' && currentProject) {
         handleSave();
       }
     }, 30000); // Auto-save every 30 seconds
 
     return () => clearInterval(autoSaveInterval);
-  }, [saveStatus]);
+  }, [saveStatus, currentProject]);
 
   const handleSave = useCallback(() => {
+    if (!currentProject) return;
+    
     setSaveStatus('saving');
+    updateProjectSchema(entities, connections);
+    
     // Simulate save operation
     setTimeout(() => {
       setSaveStatus('saved');
     }, 1000);
-  }, []);
+  }, [currentProject, entities, connections, updateProjectSchema]);
 
   const handleEntitySelect = useCallback((entity) => {
     setSelectedEntity(entity);
@@ -179,6 +190,18 @@ const SchemaCanvasDesigner = () => {
     }
   };
 
+  if (!currentProject) {
+    return (
+      <div className="h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <Icon name="Database" size={64} className="mx-auto mb-4 text-text-secondary opacity-50" />
+          <h2 className="text-xl font-semibold text-text-primary mb-2">No Project Selected</h2>
+          <p className="text-text-secondary">Please select a project from the header to view its schema.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden">
       {/* Header */}
@@ -188,20 +211,21 @@ const SchemaCanvasDesigner = () => {
         {/* Main Sidebar */}
         <Sidebar 
           isCollapsed={sidebarCollapsed} 
-          onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)} 
+          onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
         />
 
         {/* Content Area */}
-        <div className={`flex-1 flex transition-smooth ${sidebarCollapsed ? 'ml-16' : 'ml-60'} md:ml-0`}>
+        <div className={`flex-1 flex transition-all duration-300 ${sidebarCollapsed ? 'ml-16' : 'ml-60'}`}>
           
           {/* Schema Explorer */}
-          <div className={`transition-smooth ${explorerCollapsed ? 'w-0' : 'w-80'} hidden lg:block`}>
+          <div className={`transition-all duration-300 ${explorerCollapsed ? 'w-0' : 'w-80'} hidden lg:block`}>
             <SchemaExplorer
               entities={entities}
               onEntitySelect={handleEntitySelect}
               onEntityDrag={handleEntityAdd}
               selectedEntityId={selectedEntity?.id}
               isCollapsed={explorerCollapsed}
+              onToggleCollapse={() => setExplorerCollapsed(!explorerCollapsed)}
             />
           </div>
 
@@ -212,11 +236,12 @@ const SchemaCanvasDesigner = () => {
             <div className="bg-surface border-b border-border px-6 py-3 flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 <div>
-                  <h1 className="text-lg font-semibold text-text-primary">{projectName}</h1>
+                  <h1 className="text-lg font-semibold text-text-primary">{currentProject?.name}</h1>
                   <div className="flex items-center space-x-4 text-sm text-text-secondary">
                     <span>{entities?.length} entities</span>
                     <span>{connections?.length} connections</span>
-                    <span>Modified {new Date()?.toLocaleDateString()}</span>
+                    <span>Database: {currentProject?.databaseType}</span>
+                    <span>Modified {new Date(currentProject?.updatedAt)?.toLocaleDateString()}</span>
                   </div>
                 </div>
               </div>
@@ -319,7 +344,7 @@ const SchemaCanvasDesigner = () => {
           </div>
 
           {/* Property Inspector */}
-          <div className={`transition-smooth ${inspectorCollapsed ? 'w-0' : 'w-80'} hidden lg:block`}>
+          <div className={`transition-all duration-300 ${inspectorCollapsed ? 'w-0' : 'w-80'} hidden lg:block`}>
             <PropertyInspector
               selectedEntity={selectedEntity}
               selectedConnection={selectedConnection}

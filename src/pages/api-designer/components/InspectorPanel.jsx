@@ -1,31 +1,12 @@
-import React, { useState, useEffect } from 'react';
-
-// Simple Icon component for now
-const Icon = ({ name, size = 16, className = '', color = 'currentColor' }) => (
-  <span className={`inline-block ${className}`} style={{ width: size, height: size, color }}>
-    {name === 'Settings' && '⚙️'}
-    {name === 'Braces' && '{}'}
-    {name === 'Shield' && '🛡️'}
-    {name === 'Code' && '💻'}
-    {name === 'MousePointer' && '👆'}
-    {name === 'RefreshCw' && '🔄'}
-    {name === 'Copy' && '📋'}
-    {name === 'Download' && '⬇️'}
-    {name === 'Trash2' && '🗑️'}
-    {name === 'Save' && '💾'}
-    {name === 'Edit' && '✏️'}
-  </span>
-);
+import React, { useState } from 'react';
+import Icon from '../../../components/AppIcon';
+import Button from '../../../components/ui/Button';
+import Input from '../../../components/ui/Input';
+import Select from '../../../components/ui/Select';
 
 const InspectorPanel = ({ selectedNode, onNodeUpdate, isCollapsed = false }) => {
   const [activeTab, setActiveTab] = useState('general');
   const [codePreview, setCodePreview] = useState('');
-  const [localNode, setLocalNode] = useState(selectedNode);
-
-  // Always keep localNode in sync with selectedNode
-  useEffect(() => {
-    setLocalNode(selectedNode);
-  }, [selectedNode]);
 
   const tabs = [
     { id: 'general', name: 'General', icon: 'Settings' },
@@ -42,6 +23,29 @@ const InspectorPanel = ({ selectedNode, onNodeUpdate, isCollapsed = false }) => 
     { value: 'DELETE', label: 'DELETE' }
   ];
 
+  const graphqlTypes = [
+    { value: 'query', label: 'Query' },
+    { value: 'mutation', label: 'Mutation' },
+    { value: 'subscription', label: 'Subscription' },
+    { value: 'resolver', label: 'Resolver' },
+    { value: 'schema', label: 'Schema' }
+  ];
+
+  const microserviceTypes = [
+    { value: 'service', label: 'Service' },
+    { value: 'gateway', label: 'API Gateway' },
+    { value: 'loadbalancer', label: 'Load Balancer' },
+    { value: 'messagequeue', label: 'Message Queue' },
+    { value: 'circuitbreaker', label: 'Circuit Breaker' }
+  ];
+
+  const databaseTypes = [
+    { value: 'table', label: 'Database Table' },
+    { value: 'view', label: 'Database View' },
+    { value: 'storedprocedure', label: 'Stored Procedure' },
+    { value: 'trigger', label: 'Database Trigger' }
+  ];
+
   const authTypes = [
     { value: 'none', label: 'No Authentication' },
     { value: 'jwt', label: 'JWT Bearer Token' },
@@ -49,9 +53,30 @@ const InspectorPanel = ({ selectedNode, onNodeUpdate, isCollapsed = false }) => 
     { value: 'apikey', label: 'API Key' }
   ];
 
+  const getNodeType = () => {
+    if (selectedNode?.data?.graphqlType) return 'graphql';
+    if (selectedNode?.data?.microserviceType) return 'microservice';
+    if (selectedNode?.data?.databaseType) return 'database';
+    return 'http';
+  };
+
   const generateCode = () => {
     if (!selectedNode) return '';
 
+    const nodeType = getNodeType();
+    
+    if (nodeType === 'graphql') {
+      return generateGraphQLCode();
+    } else if (nodeType === 'microservice') {
+      return generateMicroserviceCode();
+    } else if (nodeType === 'database') {
+      return generateDatabaseCode();
+    } else {
+      return generateHTTPCode();
+    }
+  };
+
+  const generateHTTPCode = () => {
     const method = selectedNode?.data?.method || 'GET';
     const endpoint = selectedNode?.data?.endpoint || '/api/endpoint';
     
@@ -86,70 +111,311 @@ app.${method?.toLowerCase()}('${endpoint}', async (req, res) => {
 });`;
   };
 
-  const handleFieldChange = (field, value) => {
-    // Update localNode only
-    setLocalNode(prev => {
-      if (!prev) return prev;
-      if (["name", "color", "icon", "type", "position"].includes(field)) {
-        return { ...prev, [field]: value };
-      } else {
-        return { ...prev, data: { ...prev.data, [field]: value } };
+  const generateGraphQLCode = () => {
+    const graphqlType = selectedNode?.data?.graphqlType || 'query';
+    const endpoint = selectedNode?.data?.endpoint || 'query { users }';
+    
+    if (graphqlType === 'query' || graphqlType === 'mutation') {
+      return `// GraphQL ${graphqlType.charAt(0).toUpperCase() + graphqlType.slice(1)}
+const typeDefs = gql\`
+  ${graphqlType} {
+    ${endpoint.replace(/^[^{]*{/, '').replace(/}$/, '')}
+  }
+\`;
+
+const resolvers = {
+  ${graphqlType}: {
+    ${endpoint.match(/\w+/)?.[0] || 'users'}: async (parent, args, context) => {
+      try {
+        // Implementation here
+        return await getUsers(args);
+      } catch (error) {
+        throw new Error(\`Failed to fetch users: \${error.message}\`);
       }
-    });
+    }
+  }
+};`;
+    } else if (graphqlType === 'resolver') {
+      return `// GraphQL Resolver
+const resolvers = {
+  Query: {
+    ${selectedNode?.name?.toLowerCase().replace(/\s+/g, '') || 'users'}: async (parent, args, context) => {
+      try {
+        // Resolver implementation
+        return await getData(args);
+      } catch (error) {
+        throw new Error(\`Resolver error: \${error.message}\`);
+      }
+    }
+  }
+};`;
+    }
+    
+    return `// GraphQL Schema Definition
+const typeDefs = gql\`
+  type ${selectedNode?.name?.replace(/\s+/g, '') || 'User'} {
+    id: ID!
+    name: String!
+    email: String!
+    createdAt: String!
+    updatedAt: String!
+  }
+\`;`;
   };
 
-  const handleFieldCommit = (field) => {
-    if (!localNode || !onNodeUpdate) return;
-    onNodeUpdate(localNode);
+  const generateMicroserviceCode = () => {
+    const microserviceType = selectedNode?.data?.microserviceType || 'service';
+    const endpoint = selectedNode?.data?.endpoint || '/api/service';
+    
+    if (microserviceType === 'service') {
+      return `// Microservice Implementation
+const express = require('express');
+const app = express();
+
+app.use(express.json());
+
+// Service endpoints
+app.get('${endpoint}', async (req, res) => {
+  try {
+    const result = await processServiceRequest(req.query);
+    res.json({
+      success: true,
+      data: result,
+      service: '${selectedNode?.name}',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Service error',
+      message: error.message
+    });
+  }
+});
+
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => {
+  console.log(\`${selectedNode?.name} service running on port \${PORT}\`);
+});`;
+    } else if (microserviceType === 'gateway') {
+      return `// API Gateway Configuration
+const express = require('express');
+const { createProxyMiddleware } = require('http-proxy-middleware');
+
+const app = express();
+
+// Route to user service
+app.use('/api/users', createProxyMiddleware({
+  target: 'http://user-service:3001',
+  changeOrigin: true,
+  pathRewrite: {
+    '^/api/users': '/api'
+  }
+}));
+
+// Route to order service
+app.use('/api/orders', createProxyMiddleware({
+  target: 'http://order-service:3002',
+  changeOrigin: true,
+  pathRewrite: {
+    '^/api/orders': '/api'
+  }
+}));
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(\`API Gateway running on port \${PORT}\`);
+});`;
+    }
+    
+    return `// ${selectedNode?.name} Configuration
+// Implementation for ${microserviceType} pattern`;
   };
 
-  // Parameter editing logic
-  const handleParameterChange = (idx, key, value) => {
-    setLocalNode(prev => {
-      if (!prev) return prev;
-      const params = Array.isArray(prev.data?.parameters) ? [...prev.data.parameters] : [];
-      params[idx] = { ...params[idx], [key]: value };
-      // Immediately update the node in parent so selection is not lost
-      if (onNodeUpdate) {
-        const updatedNode = { ...prev, data: { ...prev.data, parameters: params } };
-        onNodeUpdate(updatedNode);
-      }
-      return { ...prev, data: { ...prev.data, parameters: params } };
-    });
-  };
+  const generateDatabaseCode = () => {
+    const databaseType = selectedNode?.data?.databaseType || 'table';
+    const tableName = selectedNode?.data?.endpoint || 'table';
+    
+    if (databaseType === 'table') {
+      return `-- Database Table Schema
+CREATE TABLE ${tableName} (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
 
-  const handleAddParameter = () => {
-    setLocalNode(prev => {
-      if (!prev) return prev;
-      const params = Array.isArray(prev.data?.parameters) ? [...prev.data.parameters] : [];
-      params.push({ name: "param" + (params.length + 1), type: "string", required: false });
-      return { ...prev, data: { ...prev.data, parameters: params } };
-    });
-    setTimeout(() => {
-      if (localNode && onNodeUpdate) {
-        onNodeUpdate(localNode);
-      }
-    }, 0);
-  };
+-- Indexes
+CREATE INDEX idx_${tableName}_email ON ${tableName}(email);
+CREATE INDEX idx_${tableName}_created_at ON ${tableName}(created_at);
 
-  const handleRemoveParameter = (idx) => {
-    setLocalNode(prev => {
-      if (!prev) return prev;
-      const params = Array.isArray(prev.data?.parameters) ? [...prev.data.parameters] : [];
-      params.splice(idx, 1);
-      return { ...prev, data: { ...prev.data, parameters: params } };
-    });
-    setTimeout(() => {
-      if (localNode && onNodeUpdate) {
-        onNodeUpdate(localNode);
-      }
-    }, 0);
+-- Triggers for updated_at
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+CREATE TRIGGER update_${tableName}_updated_at 
+    BEFORE UPDATE ON ${tableName} 
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_updated_at_column();`;
+    }
+    
+    return `-- ${selectedNode?.name} Database Configuration
+-- Implementation for ${databaseType}`;
   };
 
   const handleFieldUpdate = (field, value) => {
-    if (!localNode || !onNodeUpdate) return;
-    const updatedNode = { ...localNode, data: { ...localNode.data, [field]: value } };
+    if (!selectedNode || !onNodeUpdate) return;
+
+    const updatedNode = {
+      ...selectedNode,
+      data: {
+        ...selectedNode?.data,
+        [field]: value
+      }
+    };
+
     onNodeUpdate(updatedNode);
+  };
+
+  const renderGeneralTab = () => {
+    const nodeType = getNodeType();
+    
+    return (
+      <div className="p-4 space-y-4">
+        <Input
+          label="Component Name"
+          value={selectedNode?.name}
+          onChange={(e) => handleFieldUpdate('name', e?.target?.value)}
+          placeholder="Enter component name"
+        />
+
+        {nodeType === 'http' && (
+          <>
+            <Input
+              label="Endpoint Path"
+              value={selectedNode?.data?.endpoint}
+              onChange={(e) => handleFieldUpdate('endpoint', e?.target?.value)}
+              placeholder="/api/endpoint"
+            />
+
+            <Select
+              label="HTTP Method"
+              options={httpMethods}
+              value={selectedNode?.data?.method}
+              onChange={(value) => handleFieldUpdate('method', value)}
+            />
+          </>
+        )}
+
+        {nodeType === 'graphql' && (
+          <>
+            <Select
+              label="GraphQL Type"
+              options={graphqlTypes}
+              value={selectedNode?.data?.graphqlType}
+              onChange={(value) => handleFieldUpdate('graphqlType', value)}
+            />
+
+            <Input
+              label="GraphQL Operation"
+              value={selectedNode?.data?.endpoint}
+              onChange={(e) => handleFieldUpdate('endpoint', e?.target?.value)}
+              placeholder="query { users }"
+            />
+          </>
+        )}
+
+        {nodeType === 'microservice' && (
+          <>
+            <Select
+              label="Microservice Type"
+              options={microserviceTypes}
+              value={selectedNode?.data?.microserviceType}
+              onChange={(value) => handleFieldUpdate('microserviceType', value)}
+            />
+
+            <Input
+              label="Service Endpoint"
+              value={selectedNode?.data?.endpoint}
+              onChange={(e) => handleFieldUpdate('endpoint', e?.target?.value)}
+              placeholder="/api/service"
+            />
+          </>
+        )}
+
+        {nodeType === 'database' && (
+          <>
+            <Select
+              label="Database Type"
+              options={databaseTypes}
+              value={selectedNode?.data?.databaseType}
+              onChange={(value) => handleFieldUpdate('databaseType', value)}
+            />
+
+            <Input
+              label="Table/View Name"
+              value={selectedNode?.data?.endpoint}
+              onChange={(e) => handleFieldUpdate('endpoint', e?.target?.value)}
+              placeholder="table_name"
+            />
+          </>
+        )}
+
+        <Input
+          label="Description"
+          value={selectedNode?.data?.description}
+          onChange={(e) => handleFieldUpdate('description', e?.target?.value)}
+          placeholder="Describe what this component does"
+        />
+
+        {/* Show schema information for database nodes */}
+        {nodeType === 'database' && selectedNode?.data?.schema && (
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Table Schema</label>
+            <div className="bg-muted rounded-lg p-3 max-h-32 overflow-y-auto">
+              {selectedNode.data.schema.columns.map((column, index) => (
+                <div key={index} className="flex items-center space-x-2 text-sm">
+                  <span className="font-mono text-foreground">{column.name}</span>
+                  <span className="text-muted-foreground">•</span>
+                  <span className="text-muted-foreground">{column.type}</span>
+                  {!column.nullable && (
+                    <span className="text-xs px-1 py-0.5 bg-warning/10 text-warning rounded">required</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Show parameters for HTTP nodes */}
+        {nodeType === 'http' && (
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Parameters</label>
+            <div className="space-y-2">
+              {(selectedNode?.data?.parameters || []).map((param, index) => (
+                <div key={index} className="flex items-center space-x-2 p-2 bg-muted rounded-md">
+                  <Icon name="Hash" size={14} className="text-muted-foreground" />
+                  <span className="text-sm text-foreground">{param.name}</span>
+                  <span className="text-xs text-muted-foreground">{param.type}</span>
+                  {param.required && (
+                    <span className="text-xs px-2 py-1 bg-warning/10 text-warning rounded">required</span>
+                  )}
+                </div>
+              ))}
+              <Button variant="outline" size="sm" className="w-full">
+                <Icon name="Plus" size={14} />
+                Add Parameter
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
   };
 
   if (isCollapsed) {
@@ -160,7 +426,7 @@ app.${method?.toLowerCase()}('${endpoint}', async (req, res) => {
     );
   }
 
-  if (!localNode) {
+  if (!selectedNode) {
     return (
       <div className="w-80 bg-surface border-l border-border h-full flex items-center justify-center">
         <div className="text-center max-w-xs">
@@ -217,112 +483,7 @@ app.${method?.toLowerCase()}('${endpoint}', async (req, res) => {
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
         {/* General Tab */}
-        {activeTab === 'general' && (
-          <div className="p-4 space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Endpoint Name</label>
-              <input
-                type="text"
-                value={localNode?.name || ''}
-                onChange={(e) => handleFieldChange('name', e?.target?.value)}
-                onBlur={() => handleFieldCommit('name')}
-                onKeyDown={e => { if (e.key === 'Enter') handleFieldCommit('name'); }}
-                placeholder="Enter endpoint name"
-                className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Endpoint Path</label>
-              <input
-                type="text"
-                value={localNode?.data?.endpoint || ''}
-                onChange={(e) => handleFieldChange('endpoint', e?.target?.value)}
-                onBlur={() => handleFieldCommit('endpoint')}
-                onKeyDown={e => { if (e.key === 'Enter') handleFieldCommit('endpoint'); }}
-                placeholder="/api/endpoint"
-                className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">HTTP Method</label>
-              <select
-                value={localNode?.data?.method || 'GET'}
-                onChange={(e) => { handleFieldChange('method', e.target.value); handleFieldCommit('method'); }}
-                className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
-              >
-                {httpMethods.map(method => (
-                  <option key={method.value} value={method.value}>{method.label}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Description</label>
-              <input
-                type="text"
-                value={localNode?.data?.description || ''}
-                onChange={(e) => handleFieldChange('description', e?.target?.value)}
-                onBlur={() => handleFieldCommit('description')}
-                onKeyDown={e => { if (e.key === 'Enter') handleFieldCommit('description'); }}
-                placeholder="Describe what this endpoint does"
-                className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Parameters</label>
-              <div className="space-y-2">
-                {(Array.isArray(localNode?.data?.parameters) && localNode.data.parameters.length > 0) ? (
-                  localNode.data.parameters.map((param, idx) => (
-                    <div key={idx} className="flex items-center space-x-2 p-2 bg-muted rounded-md">
-                      <input
-                        className="w-24 px-2 py-1 text-sm border border-border rounded bg-background text-foreground"
-                        value={param.name || ''}
-                        onChange={e => handleParameterChange(idx, "name", e.target.value)}
-                        placeholder="name"
-                      />
-                      <select
-                        className="px-2 py-1 text-sm border border-border rounded bg-background text-foreground"
-                        value={param.type || 'string'}
-                        onChange={e => handleParameterChange(idx, "type", e.target.value)}
-                      >
-                        <option value="string">string</option>
-                        <option value="number">number</option>
-                        <option value="boolean">boolean</option>
-                      </select>
-                      <label className="flex items-center text-xs">
-                        <input
-                          type="checkbox"
-                          checked={!!param.required}
-                          onChange={e => handleParameterChange(idx, "required", e.target.checked)}
-                          className="mr-1"
-                        />
-                        required
-                      </label>
-                      <button 
-                        className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground"
-                        onClick={() => handleRemoveParameter(idx)}
-                      >
-                        <Icon name="Trash2" size={14} />
-                      </button>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-xs text-muted-foreground">No parameters</div>
-                )}
-                <button 
-                  className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground hover:bg-muted transition-colors flex items-center justify-center space-x-2"
-                  onClick={handleAddParameter}
-                >
-                  <Icon name="Plus" size={14} />
-                  <span>Add Parameter</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        {activeTab === 'general' && renderGeneralTab()}
 
         {/* Schema Tab */}
         {activeTab === 'schema' && (
@@ -347,10 +508,10 @@ app.${method?.toLowerCase()}('${endpoint}', async (req, res) => {
 }`}
                 </pre>
               </div>
-              <button className="mt-2 px-3 py-2 border border-border rounded-md bg-background text-foreground hover:bg-muted transition-colors flex items-center space-x-2">
+              <Button variant="outline" size="sm" className="mt-2">
                 <Icon name="Edit" size={14} />
-                <span>Edit Schema</span>
-              </button>
+                Edit Schema
+              </Button>
             </div>
 
             <div>
@@ -374,10 +535,10 @@ app.${method?.toLowerCase()}('${endpoint}', async (req, res) => {
 }`}
                 </pre>
               </div>
-              <button className="mt-2 px-3 py-2 border border-border rounded-md bg-background text-foreground hover:bg-muted transition-colors flex items-center space-x-2">
+              <Button variant="outline" size="sm" className="mt-2">
                 <Icon name="Edit" size={14} />
-                <span>Edit Schema</span>
-              </button>
+                Edit Schema
+              </Button>
             </div>
           </div>
         )}
@@ -385,18 +546,12 @@ app.${method?.toLowerCase()}('${endpoint}', async (req, res) => {
         {/* Security Tab */}
         {activeTab === 'security' && (
           <div className="p-4 space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Authentication Type</label>
-              <select
-                value={localNode?.data?.authType || 'none'}
-                onChange={(e) => handleFieldUpdate('authType', e.target.value)}
-                className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
-              >
-                {authTypes.map(auth => (
-                  <option key={auth.value} value={auth.value}>{auth.label}</option>
-                ))}
-              </select>
-            </div>
+            <Select
+              label="Authentication Type"
+              options={authTypes}
+              value={selectedNode?.data?.authType || 'none'}
+              onChange={(value) => handleFieldUpdate('authType', value)}
+            />
 
             <div className="space-y-3">
               <label className="text-sm font-medium text-foreground">Security Settings</label>
@@ -441,13 +596,10 @@ app.${method?.toLowerCase()}('${endpoint}', async (req, res) => {
           <div className="p-4 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-medium text-foreground">Generated Code</h3>
-              <button 
-                className="px-3 py-2 border border-border rounded-md bg-background text-foreground hover:bg-muted transition-colors flex items-center space-x-2"
-                onClick={() => setCodePreview(generateCode())}
-              >
+              <Button variant="outline" size="sm" onClick={() => setCodePreview(generateCode())}>
                 <Icon name="RefreshCw" size={14} />
-                <span>Regenerate</span>
-              </button>
+                Regenerate
+              </Button>
             </div>
 
             <div className="bg-gray-900 rounded-lg p-4 font-mono text-sm overflow-x-auto">
@@ -457,27 +609,28 @@ app.${method?.toLowerCase()}('${endpoint}', async (req, res) => {
             </div>
 
             <div className="flex space-x-2">
-              <button className="flex-1 px-3 py-2 border border-border rounded-md bg-background text-foreground hover:bg-muted transition-colors flex items-center justify-center space-x-2">
+              <Button variant="outline" size="sm" className="flex-1">
                 <Icon name="Copy" size={14} />
-                <span>Copy Code</span>
-              </button>
-              <button className="flex-1 px-3 py-2 border border-border rounded-md bg-background text-foreground hover:bg-muted transition-colors flex items-center justify-center space-x-2">
+                Copy Code
+              </Button>
+              <Button variant="outline" size="sm" className="flex-1">
                 <Icon name="Download" size={14} />
-                <span>Export</span>
-              </button>
+                Export
+              </Button>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Language</label>
-              <select
-                className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
-                defaultValue="nodejs"
-              >
-                <option value="nodejs">Node.js (Express)</option>
-                <option value="python">Python (FastAPI)</option>
-                <option value="java">Java (Spring Boot)</option>
-                <option value="csharp">C# (.NET)</option>
-              </select>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Language</label>
+              <Select
+                options={[
+                  { value: 'nodejs', label: 'Node.js (Express)' },
+                  { value: 'python', label: 'Python (FastAPI)' },
+                  { value: 'java', label: 'Java (Spring Boot)' },
+                  { value: 'csharp', label: 'C# (.NET)' }
+                ]}
+                value="nodejs"
+                onChange={() => {}}
+              />
             </div>
           </div>
         )}
@@ -485,14 +638,14 @@ app.${method?.toLowerCase()}('${endpoint}', async (req, res) => {
       {/* Footer Actions */}
       <div className="p-4 border-t border-border">
         <div className="flex space-x-2">
-          <button className="flex-1 px-3 py-2 border border-border rounded-md bg-background text-foreground hover:bg-muted transition-colors flex items-center justify-center space-x-2">
+          <Button variant="outline" size="sm" className="flex-1">
             <Icon name="Trash2" size={14} />
-            <span>Delete</span>
-          </button>
-          <button className="flex-1 px-3 py-2 border border-border rounded-md bg-background text-foreground hover:bg-muted transition-colors flex items-center justify-center space-x-2">
+            Delete
+          </Button>
+          <Button variant="default" size="sm" className="flex-1">
             <Icon name="Save" size={14} />
-            <span>Save</span>
-          </button>
+            Save
+          </Button>
         </div>
       </div>
     </div>

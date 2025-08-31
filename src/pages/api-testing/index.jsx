@@ -1,258 +1,479 @@
 import React, { useState, useEffect } from 'react';
 import Header from '../../components/ui/Header';
 import Sidebar from '../../components/ui/Sidebar';
-import Button from '../../components/ui/Button';
+import RequestCollections from './components/RequestCollections';
 import RequestBuilder from './components/RequestBuilder';
 import ResponseViewer from './components/ResponseViewer';
-import EnvironmentManager from './components/EnvironmentManager';
-import RequestCollections from './components/RequestCollections';
 import TestRunner from './components/TestRunner';
-import { useProjectContext } from '../../contexts/ProjectContext';
-
-// Simple Icon component for now
-const Icon = ({ name, size = 16, className = '' }) => (
-  <span className={`inline-block ${className}`} style={{ width: size, height: size }}>
-    {name === 'Globe' && '🌐'}
-    {name === 'Folder' && '📁'}
-    {name === 'Play' && '▶️'}
-    {name === 'CheckCircle' && '✅'}
-    {name === 'Edit' && '✏️'}
-    {name === 'Settings' && '⚙️'}
-  </span>
-);
+import EnvironmentManager from './components/EnvironmentManager';
+import Icon from '../../components/AppIcon';
+import Button from '../../components/ui/Button';
 
 const APITesting = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('builder');
   const [selectedRequest, setSelectedRequest] = useState(null);
-  const [testResults, setTestResults] = useState([]);
-  const [showEnvironmentManager, setShowEnvironmentManager] = useState(false);
-  const [showRequestCollections, setShowRequestCollections] = useState(false);
-  const [showTestRunner, setShowTestRunner] = useState(false);
-  const [environments, setEnvironments] = useState([
-    { id: 'dev', name: 'Development', baseUrl: 'http://localhost:3000' },
-    { id: 'staging', name: 'Staging', baseUrl: 'https://staging-api.example.com' },
-    { id: 'prod', name: 'Production', baseUrl: 'https://api.example.com' }
-  ]);
-  const [currentEnvironment, setCurrentEnvironment] = useState('dev');
+  const [currentResponse, setCurrentResponse] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showEnvironments, setShowEnvironments] = useState(false);
+  const [currentEnvironment, setCurrentEnvironment] = useState(null);
+  const [testResults, setTestResults] = useState(null);
+  const [isRunningTests, setIsRunningTests] = useState(false);
 
-  // Project context
-  const { currentProject } = useProjectContext();
-
-  // Mock user data
-  const mockUser = {
-    id: 'user_1',
-    name: 'Alex Johnson',
-    email: 'alex.johnson@apiforge.com',
-    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=32&h=32&fit=crop&crop=face'
-  };
-
-  const handleSidebarToggle = () => {
-    setSidebarCollapsed(!sidebarCollapsed);
-  };
-
-  const handleSidebarClose = () => {
-    setSidebarOpen(false);
-  };
-
-  const handleSidebarOpen = () => {
-    setSidebarOpen(true);
-  };
-
-  const handleProjectChange = (project) => {
-    // Handle project change
-    console.log('Project changed:', project);
-  };
-
-  const handleToggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
-  };
-
-  const handleRequestSelect = (request) => {
-    setSelectedRequest(request);
-  };
-
-  const handleTestRun = (results) => {
-    setTestResults(results);
-  };
-
-  const handleEnvironmentChange = (envId) => {
-    setCurrentEnvironment(envId);
-  };
-
-  const handleEnvironmentUpdate = (updatedEnvironments) => {
-    setEnvironments(updatedEnvironments);
-  };
-
-  const handleRunAllTests = () => {
-    // Handle running all tests
-    console.log('Running all tests...');
-  };
-
-  const tabs = [
-    { id: 'builder', label: 'Request Builder', icon: 'Edit' },
-    { id: 'collections', label: 'Collections', icon: 'Folder' },
-    { id: 'environments', label: 'Environments', icon: 'Settings' },
-    { id: 'testrunner', label: 'Test Runner', icon: 'Play' },
-    { id: 'results', label: 'Test Results', icon: 'CheckCircle' }
-  ];
-
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case 'builder':
-        return (
-          <div className="flex-1 flex">
-            <RequestBuilder
-              selectedRequest={selectedRequest}
-              currentEnvironment={currentEnvironment}
-              environments={environments}
-            />
-            <ResponseViewer />
-          </div>
-        );
-      case 'collections':
-        return (
-          <RequestCollections
-            onRequestSelect={handleRequestSelect}
-            selectedRequest={selectedRequest}
-          />
-        );
-      case 'environments':
-        return (
-          <EnvironmentManager
-            environments={environments}
-            currentEnvironment={currentEnvironment}
-            onEnvironmentChange={handleEnvironmentChange}
-            onEnvironmentUpdate={handleEnvironmentUpdate}
-          />
-        );
-      case 'testrunner':
-        return (
-          <TestRunner
-            selectedRequest={selectedRequest}
-            onTestRun={handleTestRun}
-            currentEnvironment={currentEnvironment}
-          />
-        );
-      case 'results':
-        return (
-          <div className="flex-1">
-            <h3 className="text-lg font-semibold mb-4">Test Results</h3>
-            <div className="space-y-2">
-              {testResults.map((result, index) => (
-                <div key={index} className="p-3 border rounded">
-                  <div className="flex items-center justify-between">
-                    <span>{result.name || `Test ${index + 1}`}</span>
-                    <span className={`px-2 py-1 rounded text-xs ${
-                      result.status === 'passed' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                    }`}>
-                      {result.status}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-      default:
-        return null;
+  // Mock data for collections
+  const [collections] = useState([
+    {
+      id: 'col1',
+      name: 'User Management API',
+      requests: [
+        {
+          id: 'req1',
+          name: 'Get All Users',
+          method: 'GET',
+          url: 'https://api.example.com/users',
+          headers: [
+            { key: 'Authorization', value: 'Bearer {{token}}', enabled: true },
+            { key: 'Content-Type', value: 'application/json', enabled: true }
+          ],
+          status: 'success'
+        },
+        {
+          id: 'req2',
+          name: 'Create User',
+          method: 'POST',
+          url: 'https://api.example.com/users',
+          headers: [
+            { key: 'Authorization', value: 'Bearer {{token}}', enabled: true },
+            { key: 'Content-Type', value: 'application/json', enabled: true }
+          ],
+          body: `{
+  "name": "John Doe",
+  "email": "john@example.com",
+  "role": "user"
+}`,
+          authType: 'bearer',
+          bearerToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+          status: 'success'
+        },
+        {
+          id: 'req3',
+          name: 'Update User',
+          method: 'PUT',
+          url: 'https://api.example.com/users/123',
+          headers: [
+            { key: 'Authorization', value: 'Bearer {{token}}', enabled: true },
+            { key: 'Content-Type', value: 'application/json', enabled: true }
+          ],
+          body: `{
+  "name": "John Smith",
+  "email": "johnsmith@example.com"
+}`,
+          status: 'error'
+        }
+      ]
+    },
+    {
+      id: 'col2',
+      name: 'Product Catalog',
+      requests: [
+        {
+          id: 'req4',
+          name: 'Get Products',
+          method: 'GET',
+          url: 'https://api.example.com/products',
+          headers: [
+            { key: 'API-Key', value: '{{apiKey}}', enabled: true }
+          ],
+          params: [
+            { key: 'limit', value: '10', enabled: true },
+            { key: 'offset', value: '0', enabled: true }
+          ],
+          authType: 'apikey',
+          apiKey: { key: 'X-API-Key', value: 'abc123def456', location: 'header' }
+        },
+        {
+          id: 'req5',
+          name: 'Create Product',
+          method: 'POST',
+          url: 'https://api.example.com/products',
+          headers: [
+            { key: 'API-Key', value: '{{apiKey}}', enabled: true },
+            { key: 'Content-Type', value: 'application/json', enabled: true }
+          ],
+          body: `{
+  "name": "Wireless Headphones",
+  "price": 99.99,
+  "category": "electronics",
+  "description": "High-quality wireless headphones with noise cancellation"
+}`
+        }
+      ]
     }
+  ]);
+
+  // Mock environments
+  const [environments] = useState([
+    {
+      id: 'dev',
+      name: 'Development',
+      description: 'Local development environment',
+      variables: [
+        { key: 'baseUrl', value: 'http://localhost:3000/api', enabled: true },
+        { key: 'token', value: 'dev_token_123', enabled: true },
+        { key: 'apiKey', value: 'dev_api_key_456', enabled: true }
+      ]
+    },
+    {
+      id: 'staging',
+      name: 'Staging',
+      description: 'Staging environment for testing',
+      variables: [
+        { key: 'baseUrl', value: 'https://staging-api.example.com', enabled: true },
+        { key: 'token', value: 'staging_token_789', enabled: true },
+        { key: 'apiKey', value: 'staging_api_key_012', enabled: true }
+      ]
+    },
+    {
+      id: 'prod',
+      name: 'Production',
+      description: 'Production environment',
+      variables: [
+        { key: 'baseUrl', value: 'https://api.example.com', enabled: true },
+        { key: 'token', value: 'prod_token_345', enabled: true },
+        { key: 'apiKey', value: 'prod_api_key_678', enabled: true }
+      ]
+    }
+  ]);
+
+  // Mock test suites
+  const [testSuites] = useState([
+    {
+      id: 'suite1',
+      name: 'User API Tests',
+      description: 'Comprehensive tests for user management endpoints',
+      tests: [
+        { name: 'Get all users returns 200', endpoint: '/users', method: 'GET' },
+        { name: 'Create user with valid data', endpoint: '/users', method: 'POST' },
+        { name: 'Update user returns updated data', endpoint: '/users/123', method: 'PUT' }
+      ],
+      lastRun: {
+        status: 'passed',
+        duration: 1250
+      }
+    },
+    {
+      id: 'suite2',
+      name: 'Product API Tests',
+      description: 'Tests for product catalog functionality',
+      tests: [
+        { name: 'Get products with pagination', endpoint: '/products', method: 'GET' },
+        { name: 'Create product validates required fields', endpoint: '/products', method: 'POST' }
+      ],
+      lastRun: {
+        status: 'failed',
+        duration: 890
+      }
+    }
+  ]);
+
+  useEffect(() => {
+    // Set default environment
+    if (environments?.length > 0 && !currentEnvironment) {
+      setCurrentEnvironment(environments?.[0]);
+    }
+  }, [environments, currentEnvironment]);
+
+  const handleSendRequest = async () => {
+    if (!selectedRequest) return;
+
+    setIsLoading(true);
+    
+    // Simulate API call
+    setTimeout(() => {
+      const mockResponse = {
+        status: selectedRequest?.method === 'GET' ? 200 : selectedRequest?.method === 'POST' ? 201 : 200,
+        statusText: selectedRequest?.method === 'GET' ? 'OK' : selectedRequest?.method === 'POST' ? 'Created' : 'OK',
+        time: Math.floor(Math.random() * 500) + 100,
+        size: Math.floor(Math.random() * 5000) + 1000,
+        contentType: 'application/json',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-RateLimit-Remaining': '99',
+          'X-Response-Time': '145ms',
+          'Cache-Control': 'no-cache'
+        },
+        body: selectedRequest?.method === 'GET' 
+          ? `{
+  "users": [
+    {
+      "id": 1,
+      "name": "John Doe",
+      "email": "john@example.com",
+      "role": "admin",
+      "created_at": "2025-01-10T10:30:00Z"
+    },
+    {
+      "id": 2,
+      "name": "Jane Smith",
+      "email": "jane@example.com",
+      "role": "user",
+      "created_at": "2025-01-11T14:20:00Z"
+    }
+  ],
+  "total": 2,
+  "page": 1,
+  "limit": 10
+}`
+          : selectedRequest?.method === 'POST'
+          ? `{
+  "id": 3,
+  "name": "John Doe",
+  "email": "john@example.com",
+  "role": "user",
+  "created_at": "2025-01-13T12:51:05Z",
+  "message": "User created successfully"
+}`
+          : `{
+  "id": 123,
+  "name": "John Smith",
+  "email": "johnsmith@example.com",
+  "role": "user",
+  "updated_at": "2025-01-13T12:51:05Z",
+  "message": "User updated successfully"
+}`,
+        testResults: {
+          passed: 3,
+          total: 4,
+          tests: [
+            { name: 'Status code is 200', passed: true, duration: 5 },
+            { name: 'Response time is less than 500ms', passed: true, duration: 3 },
+            { name: 'Response has required fields', passed: true, duration: 2 },
+            { name: 'Email format is valid', passed: false, duration: 4, error: 'Expected valid email format' }
+          ]
+        }
+      };
+
+      setCurrentResponse(mockResponse);
+      setIsLoading(false);
+    }, 1000);
+  };
+
+  const handleRunTests = (suite) => {
+    setIsRunningTests(true);
+    
+    // Simulate test execution
+    setTimeout(() => {
+      const mockTestResults = {
+        summary: {
+          total: suite?.tests?.length,
+          passed: Math.floor(suite?.tests?.length * 0.8),
+          failed: Math.ceil(suite?.tests?.length * 0.2),
+          skipped: 0,
+          duration: Math.floor(Math.random() * 2000) + 500
+        },
+        tests: suite?.tests?.map((test, index) => ({
+          name: test?.name,
+          method: test?.method,
+          endpoint: test?.endpoint,
+          status: index < suite?.tests?.length * 0.8 ? 'passed' : 'failed',
+          duration: Math.floor(Math.random() * 200) + 50,
+          error: index >= suite?.tests?.length * 0.8 ? 'Assertion failed: Expected status 200 but got 404' : null,
+          assertions: [
+            { description: 'Status code is 200', passed: index < suite?.tests?.length * 0.8 },
+            { description: 'Response time < 500ms', passed: true },
+            { description: 'Content-Type is application/json', passed: true }
+          ]
+        }))
+      };
+
+      setTestResults(mockTestResults);
+      setIsRunningTests(false);
+    }, 2000);
+  };
+
+  const handleRunCollection = () => {
+    // Run all test suites
+    handleRunTests({ tests: testSuites?.flatMap(suite => suite?.tests) });
+  };
+
+  const handleCreateRequest = (collectionId) => {
+    console.log('Creating new request for collection:', collectionId);
+  };
+
+  const handleCreateCollection = () => {
+    console.log('Creating new collection');
+  };
+
+  const handleEnvironmentChange = (environment) => {
+    setCurrentEnvironment(environment);
+  };
+
+  const handleEnvironmentUpdate = (updatedEnvironment) => {
+    console.log('Updating environment:', updatedEnvironment);
+  };
+
+  const handleCreateEnvironment = (newEnvironment) => {
+    console.log('Creating new environment:', newEnvironment);
   };
 
   return (
-    <div className="flex h-screen bg-background">
-      {/* Sidebar */}
-      <Sidebar
-        isOpen={sidebarOpen}
+    <div className="min-h-screen bg-background">
+      <Header
         isCollapsed={sidebarCollapsed}
-        onToggle={handleSidebarToggle}
-        onClose={handleSidebarClose}
-        currentUser={mockUser}
-        currentProject={currentProject}
+        onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+        onProjectChange={() => {}}
+        user={{ name: 'Alex Johnson', email: 'alex@apiforge.com' }}
       />
 
-      {/* Main Content */}
-      <div className={`flex-1 flex flex-col transition-all duration-300 ${
-        sidebarCollapsed ? 'ml-16' : 'ml-64'
-      }`}>
-        {/* Header */}
-        <Header
-          currentUser={mockUser}
-          currentProject={currentProject}
-          onProjectChange={handleProjectChange}
-          sidebarOpen={sidebarOpen}
-          onToggleSidebar={handleToggleSidebar}
-        />
+      <Sidebar
+        isCollapsed={sidebarCollapsed}
+        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+      />
 
-        {/* Page Content */}
-        <div className="flex-1 overflow-hidden p-6">
-          <div className="h-full flex flex-col">
-            {/* Toolbar */}
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center space-x-4">
-                <Button
-                  onClick={() => setShowEnvironmentManager(!showEnvironmentManager)}
-                  variant="outline"
-                  size="sm"
-                >
-                  <Icon name="Globe" size={16} className="mr-2" />
-                  Environments
-                </Button>
-                <Button
-                  onClick={() => setShowRequestCollections(!showRequestCollections)}
-                  variant="outline"
-                  size="sm"
-                >
-                  <Icon name="Folder" size={16} className="mr-2" />
-                  Collections
-                </Button>
-                <Button
-                  onClick={() => setShowTestRunner(!showTestRunner)}
-                  variant="outline"
-                  size="sm"
-                >
-                  <Icon name="Play" size={16} className="mr-2" />
-                  Test Runner
-                </Button>
-              </div>
+      <main className={`
+        pt-16 transition-spatial min-h-screen
+        ${sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-60'}
+      `}>
+        <div className="h-[calc(100vh-4rem)] flex flex-col">
+          {/* Top Toolbar */}
+          <div className="flex items-center justify-between p-4 border-b border-border bg-surface">
+            <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
-                <Button
-                  onClick={handleRunAllTests}
-                  className="bg-primary text-primary-foreground hover:bg-primary/90"
-                  size="sm"
-                >
-                  <Icon name="Play" size={16} className="mr-2" />
-                  Run All Tests
-                </Button>
+                <Icon name="TestTube" size={20} className="text-primary" />
+                <h1 className="text-lg font-semibold text-foreground">API Testing</h1>
+              </div>
+              <div className="hidden md:flex items-center space-x-2 text-sm text-muted-foreground">
+                <span>Environment:</span>
+                <span className="font-medium text-foreground">
+                  {currentEnvironment?.name || 'None'}
+                </span>
               </div>
             </div>
 
-            {/* Tab Navigation */}
-            <div className="flex border-b mb-6">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center px-4 py-2 border-b-2 transition-colors ${
-                    activeTab === tab.id
-                      ? 'border-primary text-primary'
-                      : 'border-transparent text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  <Icon name={tab.icon} size={16} className="mr-2" />
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Tab Content */}
-            <div className="flex-1 overflow-auto">
-              {renderTabContent()}
+            <div className="flex items-center space-x-2">
+              <Button
+                variant={showEnvironments ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setShowEnvironments(!showEnvironments)}
+                iconName="Settings"
+                iconPosition="left"
+              >
+                Environment
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                iconName="Play"
+                iconPosition="left"
+              >
+                Mock Server
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                iconName="Download"
+                iconPosition="left"
+              >
+                Export
+              </Button>
             </div>
           </div>
+
+          {/* Environment Manager */}
+          {showEnvironments && (
+            <div className="p-4 border-b border-border">
+              <EnvironmentManager
+                environments={environments}
+                currentEnvironment={currentEnvironment}
+                onEnvironmentChange={handleEnvironmentChange}
+                onEnvironmentUpdate={handleEnvironmentUpdate}
+                onCreateEnvironment={handleCreateEnvironment}
+              />
+            </div>
+          )}
+
+          {/* Main Content Area */}
+          <div className="flex-1 flex overflow-hidden">
+            {/* Left Panel - Collections */}
+            <div className="w-80 flex-shrink-0 hidden lg:block">
+              <RequestCollections
+                collections={collections}
+                selectedRequest={selectedRequest}
+                onRequestSelect={setSelectedRequest}
+                onCreateRequest={handleCreateRequest}
+                onCreateCollection={handleCreateCollection}
+              />
+            </div>
+
+            {/* Center Panel - Request Builder */}
+            <div className="flex-1 min-w-0">
+              <RequestBuilder
+                request={selectedRequest}
+                onRequestChange={setSelectedRequest}
+                onSendRequest={handleSendRequest}
+                isLoading={isLoading}
+              />
+            </div>
+
+            {/* Right Panel - Response Viewer */}
+            <div className="w-96 flex-shrink-0 hidden xl:block">
+              <ResponseViewer
+                response={currentResponse}
+                isLoading={isLoading}
+              />
+            </div>
+          </div>
+
+          {/* Bottom Panel - Test Runner */}
+          <div className="h-80 flex-shrink-0 border-t border-border">
+            <TestRunner
+              testSuites={testSuites}
+              onRunTests={handleRunTests}
+              onRunCollection={handleRunCollection}
+              isRunning={isRunningTests}
+              testResults={testResults}
+            />
+          </div>
         </div>
-      </div>
+
+        {/* Mobile Collections Overlay */}
+        {sidebarOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-150 lg:hidden">
+            <div className="fixed left-0 top-16 bottom-0 w-80 bg-surface">
+              <RequestCollections
+                collections={collections}
+                selectedRequest={selectedRequest}
+                onRequestSelect={(request) => {
+                  setSelectedRequest(request);
+                  setSidebarOpen(false);
+                }}
+                onCreateRequest={handleCreateRequest}
+                onCreateCollection={handleCreateCollection}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Mobile Response Viewer Modal */}
+        {currentResponse && (
+          <div className="xl:hidden">
+            <div className="fixed bottom-4 right-4 z-200">
+              <Button
+                variant="default"
+                onClick={() => {
+                  // Show response in modal
+                }}
+                iconName="Eye"
+                iconPosition="left"
+              >
+                View Response
+              </Button>
+            </div>
+          </div>
+        )}
+      </main>
     </div>
   );
 };
