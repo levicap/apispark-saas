@@ -3,7 +3,7 @@ import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 import Image from '../../../components/AppImage';
 
-const ProjectListItem = ({ project, onOpen, onDuplicate, onShare, onDelete }) => {
+const ProjectListItem = ({ project, onOpen, onDuplicate, onShare, onDelete, onViewDetails }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const formatDate = (date) => {
@@ -89,6 +89,15 @@ const ProjectListItem = ({ project, onOpen, onDuplicate, onShare, onDelete }) =>
           {/* Actions */}
           <div className="flex items-center gap-2">
             <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onViewDetails && onViewDetails(project)}
+              className="text-xs"
+            >
+              <Icon name="Info" size={12} />
+              Details
+            </Button>
+            <Button
               variant="outline"
               size="sm"
               onClick={() => onOpen(project)}
@@ -109,6 +118,16 @@ const ProjectListItem = ({ project, onOpen, onDuplicate, onShare, onDelete }) =>
               
               {isMenuOpen && (
                 <div className="absolute right-0 top-full mt-1 w-40 bg-popover border border-border rounded-md shadow-lg z-50">
+                  <button
+                    onClick={() => {
+                      onViewDetails && onViewDetails(project);
+                      setIsMenuOpen(false);
+                    }}
+                    className="w-full px-3 py-2 text-left text-sm hover:bg-muted flex items-center gap-2"
+                  >
+                    <Icon name="Info" size={14} />
+                    View Details
+                  </button>
                   <button
                     onClick={() => {
                       onDuplicate(project);

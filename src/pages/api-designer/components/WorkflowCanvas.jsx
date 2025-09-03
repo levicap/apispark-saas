@@ -10,10 +10,11 @@ const WorkflowCanvas = ({ onNodeSelect, selectedNode, onNodesChange, nodes = [] 
   const [showGrid, setShowGrid] = useState(true);
   const [draggedNode, setDraggedNode] = useState(null);
   const [connections, setConnections] = useState([]);
-  const [isConnecting, setIsConnecting] = useState(false);
-  const [connectionStart, setConnectionStart] = useState(null);
-  const [connectionEnd, setConnectionEnd] = useState(null);
+  const [connectionMode, setConnectionMode] = useState(false);
+  const [selectedConnectionPoint, setSelectedConnectionPoint] = useState(null);
   const canvasRef = useRef(null);
+  const [draggingNodeId, setDraggingNodeId] = useState(null);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
   // Load connections from nodes
   useEffect(() => {
@@ -103,25 +104,10 @@ const WorkflowCanvas = ({ onNodeSelect, selectedNode, onNodesChange, nodes = [] 
         y: e?.clientY - dragStart?.y
       });
     }
-
-    // Update connection end point when connecting
-    if (isConnecting) {
-      const rect = canvasRef?.current?.getBoundingClientRect();
-      const x = (e?.clientX - rect?.left - pan?.x) / (zoom / 100);
-      const y = (e?.clientY - rect?.top - pan?.y) / (zoom / 100);
-      setConnectionEnd({ x, y });
-    }
   };
 
   const handleMouseUp = () => {
     setIsDragging(false);
-    
-    // End connection if connecting
-    if (isConnecting) {
-      setIsConnecting(false);
-      setConnectionStart(null);
-      setConnectionEnd(null);
-    }
   };
 
   const handleZoomIn = () => {
@@ -142,75 +128,205 @@ const WorkflowCanvas = ({ onNodeSelect, selectedNode, onNodesChange, nodes = [] 
       onNodeSelect(node);
     }
   };
-
-  const handleNodeDragStart = (e, node) => {
-    setDraggedNode(node);
-    e.dataTransfer.effectAllowed = 'move';
-  };
-
-  const handleNodeDrag = (e, nodeId) => {
-    if (!draggedNode) return;
+  
+  const startNodeDrag = (e, node) => {
+    e.stopPropagation();
+    e.preventDefault();
     
-    const rect = canvasRef?.current?.getBoundingClientRect();
-    const x = (e?.clientX - rect?.left - pan?.x) / (zoom / 100);
-    const y = (e?.clientY - rect?.top - pan?.y) / (zoom / 100);
+    // Only start dragging if it's a left mouse button click and not on a connection point
+    if (e.button !== 0 || e.target.classList.contains('connection-point')) return;
+    
+    setDraggingNodeId(node.id);
+    
+    // Calculate offset considering canvas position
+    const canvasRect = canvasRef.current.getBoundingClientRect();
+    const mouseX = e.clientX - canvasRect.left;
+    const mouseY = e.clientY - canvasRect.top;
+    
+    // Convert to canvas coordinates considering pan and zoom
+    const canvasX = (mouseX - pan.x) / (zoom / 100);
+    const canvasY = (mouseY - pan.y) / (zoom / 100);
+    
+    setDragOffset({
+      x: canvasX - node.position.x,
+      y: canvasY - node.position.y
+    });
+    
+    console.log("Starting node drag", node.id, {
+      mouse: { x: mouseX, y: mouseY },
+      canvas: { x: canvasX, y: canvasY },
+      nodePos: node.position,
+      offset: { x: canvasX - node.position.x, y: canvasY - node.position.y }
+    });
+  };
+  
+  const handleDocumentMouseMove = useCallback((e) => {
+    if (!draggingNodeId || !canvasRef.current) return;
+    
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Calculate position considering canvas position
+    const canvasRect = canvasRef.current.getBoundingClientRect();
+    const mouseX = e.clientX - canvasRect.left;
+    const mouseY = e.clientY - canvasRect.top;
+    
+    // Convert to canvas coordinates considering pan and zoom
+    const canvasX = (mouseX - pan.x) / (zoom / 100);
+    const canvasY = (mouseY - pan.y) / (zoom / 100);
+    
+    const updatedNodes = nodes.map(node => {
+      if (node.id === draggingNodeId) {
+        return {
+          ...node,
+          position: {
+            x: Math.max(0, canvasX - dragOffset.x), // Prevent negative positions
+            y: Math.max(0, canvasY - dragOffset.y)
+          }
+        };
+      }
+      return node;
+    });
+    
+    if (onNodesChange) {
+      onNodesChange(updatedNodes);
+    }
+  }, [draggingNodeId, dragOffset, nodes, onNodesChange, pan, zoom]);
+  
+  const handleDocumentMouseUp = useCallback(() => {
+    if (draggingNodeId) {
+      console.log("Ending drag for node:", draggingNodeId);
+      setDraggingNodeId(null);
+      setDraggedNode(null);
+      
+      // Remove event listeners
+      document.removeEventListener('mousemove', handleDocumentMouseMove);
+      document.removeEventListener('mouseup', handleDocumentMouseUp);
+    }
+  }, [draggingNodeId, handleDocumentMouseMove]);
+  
 
-    const updatedNodes = nodes?.map(node => 
-      node?.id === nodeId 
-        ? { ...node, position: { x, y } }
-        : node
+  // Add/remove document event listeners when dragging starts/stops
+  useEffect(() => {
+    if (draggingNodeId) {
+      document.addEventListener('mousemove', handleDocumentMouseMove);
+      document.addEventListener('mouseup', handleDocumentMouseUp);
+      
+      return () => {
+        document.removeEventListener('mousemove', handleDocumentMouseMove);
+        document.removeEventListener('mouseup', handleDocumentMouseUp);
+      };
+    }
+  }, [draggingNodeId, handleDocumentMouseMove, handleDocumentMouseUp]);
+
+  const handleDeleteNode = (nodeId) => {
+    // Remove the node
+    const updatedNodes = nodes.filter(n => n.id !== nodeId);
+    
+    // Remove any connections involving this node
+    const updatedConnections = connections.filter(conn => 
+      conn.sourceId !== nodeId && conn.targetId !== nodeId
     );
-
+    setConnections(updatedConnections);
+    
+    // Update remaining nodes to remove references to deleted node
+    const cleanedNodes = updatedNodes.map(node => ({
+      ...node,
+      connections: (node.connections || []).filter(conn => conn.targetId !== nodeId)
+    }));
+    
+    if (onNodesChange) {
+      onNodesChange(cleanedNodes);
+    }
+    
+    // Clear selection if deleted node was selected
+    if (selectedNode?.id === nodeId) {
+      setSelectedNode(null);
+    }
+  };
+  
+  // Toggle connection mode
+  const toggleConnectionMode = () => {
+    setConnectionMode(!connectionMode);
+    setSelectedConnectionPoint(null);
+  };
+  
+  // Delete connection function
+  const handleDeleteConnection = (connectionId) => {
+    const updatedConnections = connections.filter(conn => conn.id !== connectionId);
+    setConnections(updatedConnections);
+    
+    // Update nodes to remove connection references
+    const updatedNodes = nodes.map(node => ({
+      ...node,
+      connections: (node.connections || []).filter(conn => {
+        const connToDelete = connections.find(c => c.id === connectionId);
+        return connToDelete ? conn.targetId !== connToDelete.targetId : true;
+      })
+    }));
+    
     if (onNodesChange) {
       onNodesChange(updatedNodes);
     }
   };
 
-  const handleConnectionStart = (e, nodeId, isOutput = true) => {
+  // Simple click-to-connect logic
+  const handleConnectionPointClick = (e, nodeId, isOutput) => {
     e.stopPropagation();
-    setIsConnecting(true);
-    const node = nodes.find(n => n.id === nodeId);
-    setConnectionStart({
-      nodeId,
-      x: node.position.x + (isOutput ? 200 : 0), // Adjust based on node width
-      y: node.position.y + 40, // Adjust based on node height
-      isOutput
-    });
-  };
-
-  const handleConnectionEnd = (e, nodeId, isInput = true) => {
-    e.stopPropagation();
-    if (isConnecting && connectionStart && connectionStart.nodeId !== nodeId) {
-      // Create connection
-      const newConnection = {
-        id: `${connectionStart.nodeId}_${nodeId}`,
-        sourceId: connectionStart.isOutput ? connectionStart.nodeId : nodeId,
-        targetId: connectionStart.isOutput ? nodeId : connectionStart.nodeId,
-        type: 'default'
-      };
-
-      // Update nodes with connections
-      const updatedNodes = nodes.map(node => {
-        if (node.id === connectionStart.nodeId) {
-          return {
-            ...node,
-            connections: [...(node.connections || []), {
-              targetId: nodeId,
-              type: 'default'
-            }]
-          };
-        }
-        return node;
-      });
-
-      if (onNodesChange) {
-        onNodesChange(updatedNodes);
-      }
-    }
     
-    setIsConnecting(false);
-    setConnectionStart(null);
-    setConnectionEnd(null);
+    if (!connectionMode) {
+      // Start connection mode
+      setConnectionMode(true);
+      setSelectedConnectionPoint({ nodeId, isOutput });
+      console.log('Connection mode started from node:', nodeId, 'output:', isOutput);
+    } else {
+      // Complete connection
+      if (selectedConnectionPoint && selectedConnectionPoint.nodeId !== nodeId) {
+        const sourceId = selectedConnectionPoint.isOutput ? selectedConnectionPoint.nodeId : nodeId;
+        const targetId = selectedConnectionPoint.isOutput ? nodeId : selectedConnectionPoint.nodeId;
+        
+        // Check if connection already exists
+        const existingConnection = connections.find(conn => 
+          (conn.sourceId === sourceId && conn.targetId === targetId) ||
+          (conn.sourceId === targetId && conn.targetId === sourceId)
+        );
+        
+        if (!existingConnection) {
+          // Create new connection
+          const newConnection = {
+            id: `conn_${sourceId}_${targetId}_${Date.now()}`,
+            sourceId,
+            targetId,
+            type: 'default'
+          };
+          
+          setConnections(prev => [...prev, newConnection]);
+          
+          // Update nodes with connections
+          const updatedNodes = nodes.map(node => {
+            if (node.id === sourceId) {
+              return {
+                ...node,
+                connections: [...(node.connections || []), { targetId, type: 'default' }]
+              };
+            }
+            return node;
+          });
+          
+          if (onNodesChange) {
+            onNodesChange(updatedNodes);
+          }
+          
+          console.log('Connection created:', newConnection);
+        } else {
+          console.log('Connection already exists');
+        }
+      }
+      
+      // Reset connection mode
+      setConnectionMode(false);
+      setSelectedConnectionPoint(null);
+    }
   };
 
   const getNodePosition = (nodeId) => {
@@ -280,12 +396,15 @@ const WorkflowCanvas = ({ onNodeSelect, selectedNode, onNodesChange, nodes = [] 
           backgroundPosition: `${pan?.x}px ${pan?.y}px`
         }}
       >
-        {/* SVG for connections */}
-        <svg
+        {/* SVG for drawing connections */}
+        <svg 
           className="absolute inset-0 pointer-events-none"
           style={{
+            width: '100%',
+            height: '100%',
             transform: `translate(${pan?.x}px, ${pan?.y}px) scale(${zoom / 100})`,
-            transformOrigin: '0 0'
+            transformOrigin: '0 0',
+            zIndex: 1
           }}
         >
           {/* Draw existing connections */}
@@ -304,28 +423,80 @@ const WorkflowCanvas = ({ onNodeSelect, selectedNode, onNodesChange, nodes = [] 
             const controlPoint2Y = endY;
 
             return (
-              <g key={connection.id}>
+              <g key={connection.id} className="group">
+              {/* Connection path - clickable for deletion */}
                 <path
                   d={`M ${startX} ${startY} C ${controlPoint1X} ${controlPoint1Y}, ${controlPoint2X} ${controlPoint2Y}, ${endX} ${endY}`}
-                  stroke={connection.type === 'default' ? '#3b82f6' : '#ef4444'}
-                  strokeWidth="2"
+                  stroke={connection.color || '#6366F1'}
+                  strokeWidth="3"
                   fill="none"
                   markerEnd="url(#arrowhead)"
+                  className={`transition-all duration-200 ${connection.animated ? 'animate-pulse' : ''} cursor-pointer hover:stroke-red-500`}
+                  style={{
+                    filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))',
+                    pointerEvents: 'stroke'
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (window.confirm('Delete this connection?')) {
+                      handleDeleteConnection(connection.id);
+                    }
+                  }}
                 />
+                
+                {/* Invisible wider path for easier clicking */}
+                <path
+                  d={`M ${startX} ${startY} C ${controlPoint1X} ${controlPoint1Y}, ${controlPoint2X} ${controlPoint2Y}, ${endX} ${endY}`}
+                  stroke="transparent"
+                  strokeWidth="12"
+                  fill="none"
+                  className="cursor-pointer hover:stroke-red-500 hover:stroke-opacity-20"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (window.confirm('Delete this connection?')) {
+                      handleDeleteConnection(connection.id);
+                    }
+                  }}
+                />
+                
+                {/* Connection label */}
+                <text
+                  x={(startX + endX) / 2}
+                  y={(startY + endY) / 2 - 10}
+                  fill="#6B7280"
+                  fontSize="10"
+                  textAnchor="middle"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none"
+                >
+                  {connection.type}
+                </text>
+                
+                {/* Delete button on hover */}
+                <circle
+                  cx={(startX + endX) / 2}
+                  cy={(startY + endY) / 2}
+                  r="8"
+                  fill="#EF4444"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteConnection(connection.id);
+                  }}
+                />
+                <text
+                  x={(startX + endX) / 2}
+                  y={(startY + endY) / 2 + 3}
+                  fill="white"
+                  fontSize="10"
+                  textAnchor="middle"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none"
+                >
+                  ×
+                </text>
               </g>
             );
           })}
-          
-          {/* Draw connecting line */}
-          {isConnecting && connectionStart && connectionEnd && (
-            <path
-              d={`M ${connectionStart.x} ${connectionStart.y} L ${connectionEnd.x} ${connectionEnd.y}`}
-              stroke="#3b82f6"
-              strokeWidth="2"
-              strokeDasharray="5,5"
-              fill="none"
-            />
-          )}
+
           
           {/* Arrow marker definition */}
           <defs>
@@ -339,7 +510,7 @@ const WorkflowCanvas = ({ onNodeSelect, selectedNode, onNodesChange, nodes = [] 
             >
               <polygon
                 points="0 0, 10 3.5, 0 7"
-                fill="#3b82f6"
+                fill="#6366F1"
               />
             </marker>
           </defs>
@@ -349,7 +520,8 @@ const WorkflowCanvas = ({ onNodeSelect, selectedNode, onNodesChange, nodes = [] 
         <div
           style={{
             transform: `translate(${pan?.x}px, ${pan?.y}px) scale(${zoom / 100})`,
-            transformOrigin: '0 0'
+            transformOrigin: '0 0',
+            zIndex: 10
           }}
           className="absolute inset-0"
         >
@@ -357,11 +529,11 @@ const WorkflowCanvas = ({ onNodeSelect, selectedNode, onNodesChange, nodes = [] 
           {nodes?.map((node) => (
             <div
               key={node?.id}
-              draggable
-              onDragStart={(e) => handleNodeDragStart(e, node)}
-              onDrag={(e) => handleNodeDrag(e, node?.id)}
+              // Custom drag logic
+              onMouseDown={e => startNodeDrag(e, node)}
+              draggable="false"
               onClick={() => handleNodeClick(node)}
-              className={`absolute p-4 bg-card border-2 rounded-lg shadow-elevation-1 cursor-pointer transition-smooth min-w-48 ${
+              className={`group absolute p-4 bg-card border-2 rounded-lg shadow-elevation-1 cursor-pointer transition-smooth min-w-48 ${
                 selectedNode?.id === node?.id 
                   ? 'border-primary shadow-elevation-2' 
                   : 'border-border hover:border-primary/50 hover:shadow-elevation-2'
@@ -371,6 +543,33 @@ const WorkflowCanvas = ({ onNodeSelect, selectedNode, onNodesChange, nodes = [] 
                 top: node?.position?.y
               }}
             >
+              {/* Node Actions Menu */}
+              <div 
+                className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-smooth flex space-x-1"
+                style={{ zIndex: 200 }}
+              >
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteNode(node.id);
+                  }}
+                  className="w-6 h-6 bg-destructive hover:bg-destructive/80 text-destructive-foreground rounded flex items-center justify-center transition-smooth"
+                  title="Delete node"
+                >
+                  <Icon name="X" size={12} />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // Copy node logic here
+                  }}
+                  className="w-6 h-6 bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground rounded flex items-center justify-center transition-smooth"
+                  title="Duplicate node"
+                >
+                  <Icon name="Copy" size={12} />
+                </button>
+              </div>
+              
               <div className="flex items-center space-x-3 mb-2">
                 <div className={`w-8 h-8 ${node?.color} rounded-md flex items-center justify-center`}>
                   <Icon name={node?.icon} size={16} color="white" />
@@ -395,17 +594,29 @@ const WorkflowCanvas = ({ onNodeSelect, selectedNode, onNodesChange, nodes = [] 
 
               {/* Connection Points */}
               <div 
-                className="absolute -right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 bg-primary rounded-full border-2 border-background cursor-crosshair hover:bg-primary/80 transition-smooth"
-                onMouseDown={(e) => handleConnectionStart(e, node.id, true)}
-                onMouseUp={(e) => handleConnectionEnd(e, node.id, false)}
-                title="Output connection point"
-              ></div>
+                className={`absolute -right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 rounded-full border-2 border-background cursor-pointer transition-smooth z-50 ${
+                  connectionMode && selectedConnectionPoint?.nodeId === node.id && selectedConnectionPoint?.isOutput
+                    ? 'bg-green-500 animate-pulse'
+                    : connectionMode
+                    ? 'bg-blue-500 hover:bg-blue-400'
+                    : 'bg-indigo-500 hover:bg-primary/80'
+                }`}
+                style={{ zIndex: 100 }}
+                onClick={(e) => handleConnectionPointClick(e, node.id, true)}
+                title={connectionMode ? 'Click to connect' : 'Output connection point - click to start connecting'}
+              />
               <div 
-                className="absolute -left-2 top-1/2 transform -translate-y-1/2 w-4 h-4 bg-muted rounded-full border-2 border-background cursor-crosshair hover:bg-muted/80 transition-smooth"
-                onMouseDown={(e) => handleConnectionStart(e, node.id, false)}
-                onMouseUp={(e) => handleConnectionEnd(e, node.id, true)}
-                title="Input connection point"
-              ></div>
+                className={`absolute -left-2 top-1/2 transform -translate-y-1/2 w-4 h-4 rounded-full border-2 border-background cursor-pointer transition-smooth z-50 ${
+                  connectionMode && selectedConnectionPoint?.nodeId === node.id && !selectedConnectionPoint?.isOutput
+                    ? 'bg-green-500 animate-pulse'
+                    : connectionMode
+                    ? 'bg-green-500 hover:bg-green-400'
+                    : 'bg-indigo-500 hover:bg-muted/80'
+                }`}
+                style={{ zIndex: 100 }}
+                onClick={(e) => handleConnectionPointClick(e, node.id, false)}
+                title={connectionMode ? 'Click to connect' : 'Input connection point - click to start connecting'}
+              />
             </div>
           ))}
 
@@ -433,6 +644,18 @@ const WorkflowCanvas = ({ onNodeSelect, selectedNode, onNodesChange, nodes = [] 
       </div>
       {/* Floating Toolbar */}
       <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 bg-card border border-border rounded-lg shadow-elevation-2 p-2 flex items-center space-x-2">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={toggleConnectionMode}
+          className={connectionMode ? 'bg-primary text-primary-foreground' : ''}
+          title={connectionMode ? 'Exit connection mode' : 'Enter connection mode'}
+        >
+          <Icon name="Link" size={16} />
+        </Button>
+        
+        <div className="w-px h-6 bg-border mx-1"></div>
+        
         <Button variant="ghost" size="icon" onClick={handleZoomOut}>
           <Icon name="ZoomOut" size={16} />
         </Button>
@@ -463,10 +686,21 @@ const WorkflowCanvas = ({ onNodeSelect, selectedNode, onNodesChange, nodes = [] 
         <div className="w-px h-6 bg-border mx-1"></div>
 
         <div className="flex items-center space-x-1 px-2">
-          <div className="w-2 h-2 bg-success rounded-full"></div>
-          <span className="text-xs text-muted-foreground">
-            {nodes?.length} nodes
-          </span>
+          {connectionMode ? (
+            <>
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              <span className="text-xs text-foreground font-medium">
+                Connection Mode: Click nodes to connect
+              </span>
+            </>
+          ) : (
+            <>
+              <div className="w-2 h-2 bg-success rounded-full"></div>
+              <span className="text-xs text-muted-foreground">
+                {nodes?.length} nodes
+              </span>
+            </>
+          )}
         </div>
       </div>
       {/* Validation Status */}

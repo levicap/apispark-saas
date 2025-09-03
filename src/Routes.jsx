@@ -16,6 +16,7 @@ import MigrationHistoryManagement from './pages/migration-history-management';
 import CodeGenerationExport from './pages/code-generation-export';
 import SchemaCanvasDesigner from './pages/schema-canvas-designer';
 import Marketplace from './pages/marketplace';
+import Deployment from './pages/deployment';
 
 const Routes = () => {
   return (
@@ -38,6 +39,7 @@ const Routes = () => {
         <Route path="/code-generation-export" element={<CodeGenerationExport />} />
         <Route path="/schema-canvas-designer" element={<SchemaCanvasDesigner />} />
         <Route path="/marketplace" element={<Marketplace />} />
+        <Route path="/deployment" element={<Deployment />} />
       </RouterRoutes>
       </ErrorBoundary>
     </BrowserRouter>

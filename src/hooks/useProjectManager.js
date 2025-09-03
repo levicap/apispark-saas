@@ -425,6 +425,26 @@ const useProjectManager = () => {
     return currentProject?.nodes || [];
   };
 
+  const getCurrentProjectEndpoints = () => {
+    if (!currentProject?.nodes) return [];
+    
+    // Convert nodes to endpoint format for API documentation
+    return currentProject.nodes
+      .filter(node => ['get', 'post', 'put', 'patch', 'delete', 'query', 'mutation'].includes(node.type))
+      .map(node => ({
+        id: node.id,
+        name: node.name,
+        path: node.data?.endpoint || '',
+        method: node.data?.method || node.type.toUpperCase(),
+        description: node.data?.description || '',
+        category: node.type === 'query' || node.type === 'mutation' ? 'GraphQL' : 'REST',
+        parameters: node.data?.parameters || [],
+        responses: node.data?.responses || {},
+        graphqlType: node.data?.graphqlType,
+        nodeType: node.type
+      }));
+  };
+
   const getCurrentProjectSchema = () => {
     // Mock schema data - in real app this would come from the schema canvas
     return {
@@ -478,7 +498,8 @@ const useProjectManager = () => {
     duplicateProject,
     updateProjectNodes,
     getCurrentProjectNodes,
-    getCurrentProjectSchema
+    getCurrentProjectSchema,
+    getCurrentProjectEndpoints
   };
 };
 

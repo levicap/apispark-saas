@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useProjectContext } from '../../contexts/ProjectContext';
 import Header from '../../components/ui/Header';
 import Sidebar from '../../components/ui/Sidebar';
-import CanvasToolbar from '../../components/ui/CanvasToolbar';
 import ComponentLibrary from './components/ComponentLibrary';
 import WorkflowCanvas from './components/WorkflowCanvas';
 import InspectorPanel from './components/InspectorPanel';
@@ -27,6 +26,7 @@ const APIDesigner = () => {
   } = useProjectContext();
   
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [componentLibraryCollapsed, setComponentLibraryCollapsed] = useState(false);
   const [inspectorCollapsed, setInspectorCollapsed] = useState(false);
   const [selectedNode, setSelectedNode] = useState(null);
   const [workflowNodes, setWorkflowNodes] = useState([]);
@@ -404,9 +404,15 @@ const APIDesigner = () => {
         <div className={`flex-1 flex transition-all duration-300 ${sidebarCollapsed ? 'ml-16' : 'ml-60'}`}>
           
           {/* Component Library */}
-          <ComponentLibrary onNodeAdd={handleNodeAdd} />
+          <div className={`transition-all duration-300 ${componentLibraryCollapsed ? 'w-16' : 'w-64'}`}>
+            <ComponentLibrary 
+              onNodeAdd={handleNodeAdd} 
+              isCollapsed={componentLibraryCollapsed}
+              onToggleCollapse={() => setComponentLibraryCollapsed(!componentLibraryCollapsed)}
+            />
+          </div>
 
-          {/* Canvas Area */}
+          {/* Canvas Area - Now full width with floating inspector */}
           <div className="flex-1 flex flex-col relative">
             
             {/* Project Header */}
@@ -504,11 +510,11 @@ const APIDesigner = () => {
                   <Button
                     variant="ghost"
                     size="sm"
-                    iconName="PanelRight"
+                    iconName="PanelLeft"
                     iconSize={16}
-                    onClick={() => setInspectorCollapsed(!inspectorCollapsed)}
-                    className={inspectorCollapsed ? 'text-text-secondary' : 'text-primary'}
-                    title="Toggle Inspector Panel"
+                    onClick={() => setComponentLibraryCollapsed(!componentLibraryCollapsed)}
+                    className={componentLibraryCollapsed ? 'text-text-secondary' : 'text-primary'}
+                    title="Toggle Component Library"
                   />
                 </div>
               </div>
@@ -518,32 +524,12 @@ const APIDesigner = () => {
             <WorkflowCanvas
               nodes={workflowNodes}
               onNodeSelect={handleNodeSelect}
-              onNodeMove={handleNodeMove}
-              onNodeUpdate={handleNodeUpdate}
-              onNodeAdd={handleNodeAdd}
-              selectedNodeId={selectedNode?.id}
+              onNodesChange={setWorkflowNodes}
+              selectedNode={selectedNode}
               showGrid={showGrid}
             />
 
-            {/* Canvas Toolbar */}
-            <CanvasToolbar
-              onAddNode={() => handleNodeAdd({
-                name: 'New Endpoint',
-                type: 'get',
-                color: 'bg-green-500',
-                icon: 'Download'
-              })}
-              onAlignNodes={handleAlignNodes}
-              onUndo={handleUndo}
-              onRedo={handleRedo}
-              onZoomIn={() => {}}
-              onZoomOut={() => {}}
-              onZoomFit={() => {}}
-              onToggleGrid={() => setShowGrid(!showGrid)}
-              canUndo={historyIndex >= 0}
-              canRedo={historyIndex < history?.length - 1}
-              showGrid={showGrid}
-            />
+
 
             {/* Floating Quick Actions */}
             <div className="absolute bottom-6 right-6 flex flex-col space-y-2">
@@ -579,16 +565,47 @@ const APIDesigner = () => {
             </div>
           </div>
 
-          {/* Inspector Panel */}
-          <div className={`transition-all duration-300 ${inspectorCollapsed ? 'w-0' : 'w-80'} hidden lg:block`}>
+          {/* Inspector Panel - Now floating and draggable */}
+          {selectedNode && (
             <InspectorPanel
               selectedNode={selectedNode}
               onNodeUpdate={handleNodeUpdate}
               onNodeDelete={handleNodeDelete}
               onClose={() => setSelectedNode(null)}
-              isCollapsed={inspectorCollapsed}
+              isCollapsed={false}
             />
+          )}
+          
+          {/* Inspector Toggle Button */}
+          <div className="fixed right-4 top-1/2 transform -translate-y-1/2 z-40">
+            <button
+              onClick={() => {
+                // If no node is selected, show a selection message
+                if (!selectedNode) {
+                  alert('Please select a component from the canvas to open the inspector panel.');
+                }
+              }}
+              className={`w-12 h-12 bg-primary text-primary-foreground rounded-l-lg shadow-lg hover:bg-primary/90 transition-colors flex items-center justify-center ${
+                selectedNode ? 'opacity-50' : 'opacity-100'
+              }`}
+              title="Inspector Panel"
+            >
+              <Icon name="Settings" size={20} />
+            </button>
           </div>
+          
+          {/* Component Library Toggle Button (when collapsed) */}
+          {componentLibraryCollapsed && (
+            <div className={`fixed top-1/2 transform -translate-y-1/2 z-50 ${sidebarCollapsed ? 'left-20' : 'left-64'} transition-all duration-300`}>
+              <button
+                onClick={() => setComponentLibraryCollapsed(false)}
+                className="w-12 h-12 bg-primary text-primary-foreground rounded-r-lg shadow-lg hover:bg-primary/90 transition-colors flex items-center justify-center"
+                title="Open Component Library"
+              >
+                <Icon name="ChevronRight" size={20} />
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

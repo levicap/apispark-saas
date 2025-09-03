@@ -6,6 +6,7 @@ import RequestBuilder from './components/RequestBuilder';
 import ResponseViewer from './components/ResponseViewer';
 import TestRunner from './components/TestRunner';
 import EnvironmentManager from './components/EnvironmentManager';
+import TestCreationModal from './components/TestCreationModal';
 import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
 
@@ -19,6 +20,8 @@ const APITesting = () => {
   const [currentEnvironment, setCurrentEnvironment] = useState(null);
   const [testResults, setTestResults] = useState(null);
   const [isRunningTests, setIsRunningTests] = useState(false);
+  const [showTestCreationModal, setShowTestCreationModal] = useState(false);
+  const [createdTests, setCreatedTests] = useState([]);
 
   // Mock data for collections
   const [collections] = useState([
@@ -316,6 +319,53 @@ const APITesting = () => {
     console.log('Creating new environment:', newEnvironment);
   };
 
+  const handleCreateTest = (newTest) => {
+    setCreatedTests(prev => [...prev, newTest]);
+    console.log('Created new test:', newTest);
+  };
+
+  const handleRunCreatedTests = (testsToRun = null) => {
+    const targetTests = testsToRun || createdTests;
+    if (targetTests.length === 0) return;
+    
+    setIsRunningTests(true);
+    
+    // Simulate test execution for created tests
+    setTimeout(() => {
+      const mockTestResults = {
+        summary: {
+          total: targetTests.length,
+          passed: Math.floor(targetTests.length * 0.85),
+          failed: Math.ceil(targetTests.length * 0.15),
+          skipped: 0,
+          duration: Math.floor(Math.random() * 3000) + 1000
+        },
+        tests: targetTests.map((test, index) => {
+          const isSuccess = index < targetTests.length * 0.85;
+          return {
+            name: test.name,
+            method: test.method,
+            endpoint: test.endpoint,
+            type: test.type,
+            source: test.source,
+            status: isSuccess ? 'passed' : 'failed',
+            duration: Math.floor(Math.random() * 300) + 50,
+            error: !isSuccess ? `Assertion failed: Expected ${test.expectedStatusCode} but got ${Math.floor(Math.random() * 100) + 400}` : null,
+            assertions: test.assertions?.map(assertion => ({
+              description: `${assertion.type} ${assertion.operator} ${assertion.value}`,
+              passed: isSuccess
+            })) || [],
+            testContent: test.testContent,
+            expectedResponse: test.expectedResponse
+          };
+        })
+      };
+      
+      setTestResults(mockTestResults);
+      setIsRunningTests(false);
+    }, 2500);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Header
@@ -353,6 +403,15 @@ const APITesting = () => {
             </div>
 
             <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowTestCreationModal(true)}
+                iconName="Plus"
+                iconPosition="left"
+              >
+                Create Test
+              </Button>
               <Button
                 variant={showEnvironments ? 'default' : 'outline'}
                 size="sm"
@@ -430,8 +489,11 @@ const APITesting = () => {
           <div className="h-80 flex-shrink-0 border-t border-border">
             <TestRunner
               testSuites={testSuites}
+              createdTests={createdTests}
               onRunTests={handleRunTests}
               onRunCollection={handleRunCollection}
+              onRunCreatedTests={handleRunCreatedTests}
+              onCreateTest={() => setShowTestCreationModal(true)}
               isRunning={isRunningTests}
               testResults={testResults}
             />
@@ -473,6 +535,15 @@ const APITesting = () => {
             </div>
           </div>
         )}
+
+        {/* Test Creation Modal */}
+        <TestCreationModal
+          isOpen={showTestCreationModal}
+          onClose={() => setShowTestCreationModal(false)}
+          onCreateTest={handleCreateTest}
+          selectedRequest={selectedRequest}
+          collections={collections}
+        />
       </main>
     </div>
   );

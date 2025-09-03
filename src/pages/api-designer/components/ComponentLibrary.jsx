@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import Icon from '../../../components/AppIcon';
 import Input from '../../../components/ui/Input';
 
-const ComponentLibrary = ({ onDragStart, isCollapsed = false }) => {
+const ComponentLibrary = ({ onDragStart, isCollapsed = false, onToggleCollapse }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('http');
 
@@ -306,8 +306,19 @@ const ComponentLibrary = ({ onDragStart, isCollapsed = false }) => {
 
   if (isCollapsed) {
     return (
-      <div className="w-16 bg-surface border-r border-border h-full flex flex-col items-center py-4 space-y-4">
-        {componentCategories?.map(category => (
+      <div 
+        className="w-16 bg-surface border-r border-border h-full flex flex-col items-center py-4 space-y-4"
+        style={{ position: 'relative', zIndex: 900 }}
+      >
+        <button
+          onClick={onToggleCollapse}
+          className="w-10 h-10 rounded-lg flex items-center justify-center transition-smooth bg-primary text-primary-foreground hover:bg-primary/80"
+          title="Expand Component Library"
+        >
+          <Icon name="ChevronRight" size={18} />
+        </button>
+        <div className="w-6 h-px bg-border" />
+        {componentCategories?.slice(0, 6)?.map(category => (
           <button
             key={category?.id}
             onClick={() => setActiveCategory(category?.id)}
@@ -318,7 +329,7 @@ const ComponentLibrary = ({ onDragStart, isCollapsed = false }) => {
             }`}
             title={category?.name}
           >
-            <Icon name={category?.icon} size={18} />
+            <Icon name={category?.icon} size={16} />
           </button>
         ))}
       </div>
@@ -326,10 +337,22 @@ const ComponentLibrary = ({ onDragStart, isCollapsed = false }) => {
   }
 
   return (
-    <div className="w-64 bg-surface border-r border-border h-full flex flex-col">
+    <div 
+      className="w-64 bg-surface border-r border-border h-full flex flex-col"
+      style={{ position: 'relative', zIndex: 900 }}
+    >
       {/* Header */}
       <div className="p-4 border-b border-border">
-        <h2 className="text-lg font-semibold text-foreground mb-3">Components</h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-semibold text-foreground">Components</h2>
+          <button
+            onClick={onToggleCollapse}
+            className="w-8 h-8 rounded-lg flex items-center justify-center transition-smooth hover:bg-muted"
+            title="Collapse Component Library"
+          >
+            <Icon name="ChevronLeft" size={16} className="text-muted-foreground" />
+          </button>
+        </div>
         <Input
           type="search"
           placeholder="Search components..."

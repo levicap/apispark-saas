@@ -87,7 +87,7 @@ const Header = ({
               </svg>
             </div>
             <div className="hidden sm:block">
-              <h1 className="text-lg font-semibold text-foreground">APIForge</h1>
+              <h1 className="text-lg font-semibold text-foreground">APISpark</h1>
             </div>
           </div>
 

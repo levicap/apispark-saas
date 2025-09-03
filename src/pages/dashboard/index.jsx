@@ -12,6 +12,7 @@ import TeamPresence from './components/TeamPresence';
 import QuickStartTemplates from './components/QuickStartTemplates';
 import ProjectFilters from './components/ProjectFilters';
 import BulkActions from './components/BulkActions';
+import ProjectDetailsModal from './components/ProjectDetailsModal';
 
 const Dashboard = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -20,6 +21,8 @@ const Dashboard = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState('lastModified');
+  const [selectedProjectDetails, setSelectedProjectDetails] = useState(null);
+  const [showProjectDetails, setShowProjectDetails] = useState(false);
   const navigate = useNavigate();
 
   // Mock data
@@ -65,14 +68,34 @@ const Dashboard = () => {
       description: "Complete REST API for e-commerce platform with payment integration, inventory management, and user authentication.",
       status: "active",
       lastModified: "2025-08-28T08:30:00Z",
+      createdAt: "2025-07-15T10:00:00Z",
+      createdBy: { name: "John Smith", id: 1, role: "Lead Developer" },
       endpoints: 45,
+      entities: 12,
       collaborators: 5,
       thumbnail: "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=400&h=300&fit=crop",
       recentCollaborators: [
-        { id: 1, name: "Sarah Johnson", avatar: "https://randomuser.me/api/portraits/women/1.jpg" },
-        { id: 2, name: "Mike Chen", avatar: "https://randomuser.me/api/portraits/men/2.jpg" },
-        { id: 3, name: "Emily Davis", avatar: null },
-        { id: 4, name: "Alex Rodriguez", avatar: "https://randomuser.me/api/portraits/men/4.jpg" }
+        { id: 1, name: "Sarah Johnson", avatar: "https://randomuser.me/api/portraits/women/1.jpg", role: "Frontend Developer", joinedAt: "2025-07-20T09:00:00Z" },
+        { id: 2, name: "Mike Chen", avatar: "https://randomuser.me/api/portraits/men/2.jpg", role: "Backend Developer", joinedAt: "2025-07-18T14:30:00Z" },
+        { id: 3, name: "Emily Davis", avatar: null, role: "QA Engineer", joinedAt: "2025-07-25T11:15:00Z" },
+        { id: 4, name: "Alex Rodriguez", avatar: "https://randomuser.me/api/portraits/men/4.jpg", role: "DevOps Engineer", joinedAt: "2025-08-01T08:45:00Z" }
+      ],
+      apiKeys: [
+        { id: 1, name: "Production Key", key: "pk_live_51H***************", createdBy: "John Smith", createdAt: "2025-08-01T10:00:00Z", lastUsed: "2025-08-28T07:30:00Z", status: "active" },
+        { id: 2, name: "Staging Key", key: "pk_test_51H***************", createdBy: "Sarah Johnson", createdAt: "2025-07-25T14:20:00Z", lastUsed: "2025-08-27T16:45:00Z", status: "active" },
+        { id: 3, name: "Development Key", key: "pk_dev_51H***************", createdBy: "Mike Chen", createdAt: "2025-07-20T09:15:00Z", lastUsed: "2025-08-28T08:00:00Z", status: "active" }
+      ],
+      recentEndpoints: [
+        { id: 1, method: "POST", path: "/api/v1/orders/checkout", createdBy: "Sarah Johnson", createdAt: "2025-08-28T08:45:00Z", status: "active" },
+        { id: 2, method: "GET", path: "/api/v1/products/search", createdBy: "Mike Chen", createdAt: "2025-08-27T15:20:00Z", status: "active" },
+        { id: 3, method: "PUT", path: "/api/v1/users/profile", createdBy: "Emily Davis", createdAt: "2025-08-26T11:30:00Z", status: "active" },
+        { id: 4, method: "DELETE", path: "/api/v1/cart/items", createdBy: "Alex Rodriguez", createdAt: "2025-08-25T14:10:00Z", status: "active" }
+      ],
+      recentEntities: [
+        { id: 1, name: "Order", fields: 8, createdBy: "John Smith", createdAt: "2025-08-20T10:00:00Z", lastModified: "2025-08-28T07:15:00Z" },
+        { id: 2, name: "Product", fields: 12, createdBy: "Sarah Johnson", createdAt: "2025-08-18T14:30:00Z", lastModified: "2025-08-27T09:20:00Z" },
+        { id: 3, name: "User", fields: 15, createdBy: "Mike Chen", createdAt: "2025-08-15T11:45:00Z", lastModified: "2025-08-26T16:30:00Z" },
+        { id: 4, name: "Cart", fields: 6, createdBy: "Emily Davis", createdAt: "2025-08-12T13:20:00Z", lastModified: "2025-08-25T10:45:00Z" }
       ]
     },
     {
@@ -81,13 +104,30 @@ const Dashboard = () => {
       description: "Comprehensive user authentication and authorization service with role-based access control and multi-factor authentication.",
       status: "draft",
       lastModified: "2025-08-27T15:45:00Z",
+      createdAt: "2025-07-10T09:30:00Z",
+      createdBy: { name: "Lisa Wang", id: 2, role: "System Architect" },
       endpoints: 28,
+      entities: 8,
       collaborators: 3,
       thumbnail: "https://images.pexels.com/photos/3184291/pexels-photo-3184291.jpeg?w=400&h=300&fit=crop",
       recentCollaborators: [
-        { id: 1, name: "Sarah Johnson", avatar: "https://randomuser.me/api/portraits/women/1.jpg" },
-        { id: 5, name: "David Kim", avatar: "https://randomuser.me/api/portraits/men/5.jpg" },
-        { id: 6, name: "Lisa Wang", avatar: null }
+        { id: 1, name: "Sarah Johnson", avatar: "https://randomuser.me/api/portraits/women/1.jpg", role: "Frontend Developer", joinedAt: "2025-07-15T10:30:00Z" },
+        { id: 5, name: "David Kim", avatar: "https://randomuser.me/api/portraits/men/5.jpg", role: "Security Specialist", joinedAt: "2025-07-12T14:00:00Z" },
+        { id: 6, name: "Lisa Wang", avatar: null, role: "System Architect", joinedAt: "2025-07-10T09:30:00Z" }
+      ],
+      apiKeys: [
+        { id: 1, name: "Test Environment", key: "uk_test_51M***************", createdBy: "Lisa Wang", createdAt: "2025-07-15T11:00:00Z", lastUsed: "2025-08-27T14:20:00Z", status: "active" },
+        { id: 2, name: "Local Development", key: "uk_dev_51M***************", createdBy: "David Kim", createdAt: "2025-07-20T16:30:00Z", lastUsed: "2025-08-27T15:45:00Z", status: "active" }
+      ],
+      recentEndpoints: [
+        { id: 1, method: "POST", path: "/api/auth/login", createdBy: "Lisa Wang", createdAt: "2025-08-27T15:45:00Z", status: "active" },
+        { id: 2, method: "POST", path: "/api/auth/register", createdBy: "David Kim", createdAt: "2025-08-26T10:15:00Z", status: "active" },
+        { id: 3, method: "GET", path: "/api/users/profile", createdBy: "Sarah Johnson", createdAt: "2025-08-25T14:20:00Z", status: "active" }
+      ],
+      recentEntities: [
+        { id: 1, name: "User", fields: 18, createdBy: "Lisa Wang", createdAt: "2025-07-12T10:00:00Z", lastModified: "2025-08-27T13:30:00Z" },
+        { id: 2, name: "Role", fields: 5, createdBy: "David Kim", createdAt: "2025-07-15T11:20:00Z", lastModified: "2025-08-25T09:45:00Z" },
+        { id: 3, name: "Permission", fields: 7, createdBy: "Sarah Johnson", createdAt: "2025-07-18T16:10:00Z", lastModified: "2025-08-24T14:15:00Z" }
       ]
     },
     {
@@ -346,6 +386,16 @@ const Dashboard = () => {
     // Implement deletion logic with confirmation
   };
 
+  const handleViewProjectDetails = (project) => {
+    setSelectedProjectDetails(project);
+    setShowProjectDetails(true);
+  };
+
+  const handleCloseProjectDetails = () => {
+    setShowProjectDetails(false);
+    setSelectedProjectDetails(null);
+  };
+
   const handleCreateFromTemplate = (template) => {
     console.log('Creating project from template:', template?.name);
     navigate('/visual-api-designer', { state: { templateId: template?.id } });
@@ -502,6 +552,7 @@ const Dashboard = () => {
                           onDuplicate={handleDuplicateProject}
                           onShare={handleShareProject}
                           onDelete={handleDeleteProject}
+                          onViewDetails={handleViewProjectDetails}
                         />
                       ) : (
                         <ProjectListItem
@@ -510,6 +561,7 @@ const Dashboard = () => {
                           onDuplicate={handleDuplicateProject}
                           onShare={handleShareProject}
                           onDelete={handleDeleteProject}
+                          onViewDetails={handleViewProjectDetails}
                         />
                       )}
                     </div>
@@ -548,6 +600,13 @@ const Dashboard = () => {
           </div>
         </div>
       </main>
+      
+      {/* Project Details Modal */}
+      <ProjectDetailsModal
+        project={selectedProjectDetails}
+        isOpen={showProjectDetails}
+        onClose={handleCloseProjectDetails}
+      />
     </div>
   );
 };

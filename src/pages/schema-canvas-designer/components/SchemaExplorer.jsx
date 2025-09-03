@@ -127,7 +127,10 @@ const SchemaExplorer = ({ entities = [], onEntitySelect, onEntityDrag, selectedE
 
   if (isCollapsed) {
     return (
-      <div className="w-12 bg-surface border-r border-border h-full flex flex-col items-center py-4 space-y-3">
+      <div 
+        className="w-12 bg-surface border-r border-border h-full flex flex-col items-center py-4 space-y-3" 
+        style={{ position: 'relative', zIndex: 1100 }}
+      >
         <button
           onClick={onToggleCollapse}
           className="w-8 h-8 rounded flex items-center justify-center hover:bg-muted transition-smooth"
@@ -156,7 +159,10 @@ const SchemaExplorer = ({ entities = [], onEntitySelect, onEntityDrag, selectedE
   }
 
   return (
-    <div className="w-80 bg-surface border-r border-border h-full flex flex-col">
+    <div 
+      className={`w-80 bg-surface border-r border-border h-full flex flex-col`} 
+      style={{ position: 'relative', zIndex: 1100 }}
+    >
       {/* Header */}
       <div className="p-4 border-b border-border">
         <div className="flex items-center justify-between mb-4">

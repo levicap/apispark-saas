@@ -4,13 +4,17 @@ import Button from '../../../components/ui/Button';
 
 const TestRunner = ({ 
   testSuites = [], 
+  createdTests = [],
   onRunTests, 
   onRunCollection,
+  onRunCreatedTests,
+  onCreateTest,
   isRunning = false,
   testResults = null 
 }) => {
   const [selectedSuite, setSelectedSuite] = useState(null);
   const [showResults, setShowResults] = useState(false);
+  const [activeTab, setActiveTab] = useState('suites');
 
   const handleRunSuite = (suite) => {
     setSelectedSuite(suite);
@@ -39,6 +43,31 @@ const TestRunner = ({
         <div className="flex items-center space-x-3">
           <Icon name="TestTube" size={18} className="text-primary" />
           <h3 className="text-sm font-semibold text-foreground">Test Runner</h3>
+          
+          {/* Tab Navigation */}
+          <div className="flex items-center space-x-1 ml-4">
+            <button
+              onClick={() => setActiveTab('suites')}
+              className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                activeTab === 'suites' 
+                  ? 'bg-primary text-primary-foreground' 
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Test Suites ({testSuites?.length || 0})
+            </button>
+            <button
+              onClick={() => setActiveTab('created')}
+              className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                activeTab === 'created' 
+                  ? 'bg-primary text-primary-foreground' 
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Created Tests ({createdTests?.length || 0})
+            </button>
+          </div>
+          
           {testResults && (
             <div className="flex items-center space-x-2 text-sm">
               <span className={`
@@ -55,6 +84,27 @@ const TestRunner = ({
         </div>
 
         <div className="flex items-center space-x-2">
+          {activeTab === 'created' && createdTests?.length > 0 && (
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => onRunCreatedTests && onRunCreatedTests()}
+              loading={isRunning}
+              iconName="Play"
+              iconPosition="left"
+            >
+              Run Created Tests
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onCreateTest && onCreateTest()}
+            iconName="Plus"
+            iconPosition="left"
+          >
+            Create Test
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -68,7 +118,7 @@ const TestRunner = ({
             variant="default"
             size="sm"
             onClick={() => onRunCollection()}
-            loading={isRunning}
+            loading={isRunning && activeTab === 'suites'}
             iconName="Play"
             iconPosition="left"
           >
@@ -76,61 +126,154 @@ const TestRunner = ({
           </Button>
         </div>
       </div>
-      {/* Test Suites */}
+      {/* Test Suites and Created Tests */}
       {!showResults && (
         <div className="p-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {testSuites?.map((suite) => (
-              <div key={suite?.id} className="bg-muted/30 rounded-lg p-4 border border-border">
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <h4 className="text-sm font-medium text-foreground mb-1">{suite?.name}</h4>
-                    <p className="text-xs text-muted-foreground">{suite?.description}</p>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <span className="text-xs text-muted-foreground">
-                      {suite?.tests?.length} tests
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    {suite?.lastRun && (
-                      <>
-                        <Icon 
-                          name={suite?.lastRun?.status === 'passed' ? 'CheckCircle' : 'XCircle'} 
-                          size={14} 
-                          className={suite?.lastRun?.status === 'passed' ? 'text-green-600' : 'text-red-600'}
-                        />
+          {activeTab === 'suites' && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {testSuites?.map((suite) => (
+                  <div key={suite?.id} className="bg-muted/30 rounded-lg p-4 border border-border">
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <h4 className="text-sm font-medium text-foreground mb-1">{suite?.name}</h4>
+                        <p className="text-xs text-muted-foreground">{suite?.description}</p>
+                      </div>
+                      <div className="flex items-center space-x-1">
                         <span className="text-xs text-muted-foreground">
-                          {formatDuration(suite?.lastRun?.duration)}
+                          {suite?.tests?.length} tests
                         </span>
-                      </>
-                    )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        {suite?.lastRun && (
+                          <>
+                            <Icon 
+                              name={suite?.lastRun?.status === 'passed' ? 'CheckCircle' : 'XCircle'} 
+                              size={14} 
+                              className={suite?.lastRun?.status === 'passed' ? 'text-green-600' : 'text-red-600'}
+                            />
+                            <span className="text-xs text-muted-foreground">
+                              {formatDuration(suite?.lastRun?.duration)}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleRunSuite(suite)}
+                        loading={isRunning && selectedSuite?.id === suite?.id}
+                      >
+                        <Icon name="Play" size={12} className="mr-1" />
+                        Run
+                      </Button>
+                    </div>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleRunSuite(suite)}
-                    loading={isRunning && selectedSuite?.id === suite?.id}
-                  >
-                    <Icon name="Play" size={12} className="mr-1" />
-                    Run
+                ))}
+              </div>
+
+              {testSuites?.length === 0 && (
+                <div className="text-center py-8">
+                  <Icon name="TestTube" size={32} className="mx-auto mb-2 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground mb-3">No test suites found</p>
+                  <Button variant="outline" size="sm" onClick={() => onCreateTest && onCreateTest()}>
+                    Create Test Suite
                   </Button>
                 </div>
-              </div>
-            ))}
-          </div>
+              )}
+            </>
+          )}
 
-          {testSuites?.length === 0 && (
-            <div className="text-center py-8">
-              <Icon name="TestTube" size={32} className="mx-auto mb-2 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground mb-3">No test suites found</p>
-              <Button variant="outline" size="sm">
-                Create Test Suite
-              </Button>
-            </div>
+          {activeTab === 'created' && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {createdTests?.map((test) => (
+                  <div key={test?.id} className="bg-muted/30 rounded-lg p-4 border border-border">
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <h4 className="text-sm font-medium text-foreground mb-1">{test?.name}</h4>
+                        <p className="text-xs text-muted-foreground">
+                          {test?.method} {test?.endpoint}
+                        </p>
+                        {test?.description && (
+                          <p className="text-xs text-muted-foreground mt-1">{test?.description}</p>
+                        )}
+                        {test?.source === 'ai' && (
+                          <div className="flex items-center space-x-1 mt-1">
+                            <Icon name="Sparkles" size={10} className="text-primary" />
+                            <span className="text-xs text-primary">AI Generated</span>
+                            {test?.confidence && (
+                              <span className="text-xs text-muted-foreground">({test.confidence}%)</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex flex-col items-end space-y-1">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          test?.type === 'functional' ? 'bg-blue-100 text-blue-800' :
+                          test?.type === 'performance' ? 'bg-orange-100 text-orange-800' :
+                          test?.type === 'security' ? 'bg-red-100 text-red-800' :
+                          test?.type === 'validation' ? 'bg-green-100 text-green-800' :
+                          test?.type === 'integration' ? 'bg-purple-100 text-purple-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {test?.type}
+                        </span>
+                        {test?.confidence && (
+                          <span className="text-xs text-muted-foreground">
+                            {test?.confidence}% confidence
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs text-muted-foreground">
+                        {test?.assertions?.length || 0} assertions
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-xs"
+                        >
+                          <Icon name="Edit" size={12} className="mr-1" />
+                          Edit
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            if (onRunCreatedTests) {
+                              // Run single test
+                              onRunCreatedTests([test]);
+                            }
+                          }}
+                          loading={isRunning}
+                        >
+                          <Icon name="Play" size={12} className="mr-1" />
+                          Run
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {createdTests?.length === 0 && (
+                <div className="text-center py-8">
+                  <Icon name="TestTube" size={32} className="mx-auto mb-2 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground mb-3">No custom tests created yet</p>
+                  <Button variant="outline" size="sm" onClick={() => onCreateTest && onCreateTest()}>
+                    <Icon name="Plus" size={14} className="mr-2" />
+                    Create Your First Test
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
@@ -189,6 +332,12 @@ const TestRunner = ({
                             <span className="text-xs text-muted-foreground">
                               {test?.method} {test?.endpoint}
                             </span>
+                            {test?.source === 'ai' && (
+                              <div className="flex items-center space-x-1">
+                                <Icon name="Sparkles" size={10} className="text-primary" />
+                                <span className="text-xs text-primary">AI</span>
+                              </div>
+                            )}
                           </div>
                           {test?.error && (
                             <p className="text-xs text-red-600 mt-1">{test?.error}</p>

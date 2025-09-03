@@ -3,7 +3,7 @@ import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 import Image from '../../../components/AppImage';
 
-const ProjectCard = ({ project, onOpen, onDuplicate, onShare, onDelete }) => {
+const ProjectCard = ({ project, onOpen, onDuplicate, onShare, onDelete, onViewDetails }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const formatDate = (date) => {
@@ -102,20 +102,26 @@ const ProjectCard = ({ project, onOpen, onDuplicate, onShare, onDelete }) => {
         
         <div className="flex items-center justify-between text-xs text-muted-foreground mb-4">
           <span>Modified {formatDate(project?.lastModified)}</span>
-          <div className="flex items-center gap-1">
-            <Icon name="Globe" size={12} />
-            <span>{project?.endpoints} endpoints</span>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1">
+              <Icon name="Globe" size={12} />
+              <span>{project?.endpoints} endpoints</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Icon name="Database" size={12} />
+              <span>{project?.entities || 0} entities</span>
+            </div>
           </div>
         </div>
 
         {/* Collaboration Indicators */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-3">
           <div className="flex -space-x-2">
             {project?.recentCollaborators?.slice(0, 3)?.map((collaborator, index) => (
               <div
                 key={collaborator?.id}
                 className="w-6 h-6 rounded-full border-2 border-card bg-muted flex items-center justify-center text-xs font-medium"
-                title={collaborator?.name}
+                title={`${collaborator?.name} - ${collaborator?.role}`}
               >
                 {collaborator?.avatar ? (
                   <Image
@@ -135,15 +141,42 @@ const ProjectCard = ({ project, onOpen, onDuplicate, onShare, onDelete }) => {
             )}
           </div>
           
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onOpen(project)}
-            iconName="ExternalLink"
-            iconSize={14}
-          >
-            Open
-          </Button>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onViewDetails && onViewDetails(project)}
+              className="text-xs"
+            >
+              <Icon name="Info" size={12} />
+              Details
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onOpen(project)}
+              iconName="ExternalLink"
+              iconSize={12}
+            >
+              Open
+            </Button>
+          </div>
+        </div>
+        
+        {/* Quick Stats */}
+        <div className="grid grid-cols-3 gap-2 text-xs">
+          <div className="text-center p-2 bg-muted/50 rounded">
+            <div className="font-medium text-foreground">{project?.apiKeys?.length || 0}</div>
+            <div className="text-muted-foreground">API Keys</div>
+          </div>
+          <div className="text-center p-2 bg-muted/50 rounded">
+            <div className="font-medium text-foreground">{project?.recentEndpoints?.length || 0}</div>
+            <div className="text-muted-foreground">Recent</div>
+          </div>
+          <div className="text-center p-2 bg-muted/50 rounded">
+            <div className="font-medium text-foreground">{project?.createdBy?.name?.split(' ')[0] || 'Unknown'}</div>
+            <div className="text-muted-foreground">Creator</div>
+          </div>
         </div>
       </div>
     </div>

@@ -16,6 +16,13 @@ const Sidebar = ({
 
   const navigationItems = [
     {
+      label: 'Dashboard',
+      path: '/dashboard',
+      icon: 'LayoutDashboard',
+      tooltip: 'Project overview and metrics',
+      phase: 'overview'
+    },
+    {
       label: 'API Designer',
       path: '/api-designer',
       icon: 'Code',
@@ -98,6 +105,7 @@ const Sidebar = ({
 
   const getPhaseLabel = (phase) => {
     const phaseLabels = {
+      overview: 'Overview',
       design: 'Design & Build',
       'db-design': 'DB Design',
       validate: 'Validate & Test',
@@ -115,24 +123,26 @@ const Sidebar = ({
     return acc;
   }, {});
 
-  const phaseOrder = ['design', 'db-design', 'validate', 'deploy', 'admin'];
+  const phaseOrder = ['overview', 'design', 'db-design', 'validate', 'deploy', 'admin'];
 
   return (
     <>
       {/* Mobile Overlay */}
       {isOpen && (
         <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-150 lg:hidden"
+          className="fixed inset-0 bg-black bg-opacity-50 lg:hidden"
+          style={{ zIndex: 999 }}
           onClick={onClose}
         />
       )}
       {/* Sidebar */}
       <aside 
         className={`
-          fixed left-0 top-16 bottom-0 bg-surface border-r border-border z-200 shadow-elevation-1 transition-spatial
+          fixed left-0 top-16 bottom-0 bg-surface border-r border-border shadow-elevation-1 transition-spatial
           ${isCollapsed ? 'w-16' : 'w-60'}
           ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}
+        style={{ zIndex: 1000 }}
       >
         <div className="flex flex-col h-full">
           {/* Sidebar Header */}
@@ -204,7 +214,10 @@ const Sidebar = ({
 
                           {/* Tooltip for collapsed state */}
                           {isCollapsed && (
-                            <div className="absolute left-full top-1/2 transform -translate-y-1/2 ml-2 px-2 py-1 bg-popover text-popover-foreground text-xs rounded-md shadow-elevation-2 opacity-0 group-hover:opacity-100 transition-smooth pointer-events-none whitespace-nowrap z-300">
+                            <div 
+                              className="absolute left-full top-1/2 transform -translate-y-1/2 ml-2 px-2 py-1 bg-popover text-popover-foreground text-xs rounded-md shadow-elevation-2 opacity-0 group-hover:opacity-100 transition-smooth pointer-events-none whitespace-nowrap"
+                              style={{ zIndex: 1200 }}
+                            >
                               {item?.label}
                               <div className="absolute right-full top-1/2 transform -translate-y-1/2 border-4 border-transparent border-r-popover"></div>
                             </div>
